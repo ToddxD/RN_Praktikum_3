@@ -3,23 +3,26 @@ CC = gcc
 CFLAGS = -Wall -Wno-multichar -std=gnu17
 
 # Ziele (Executables)
-TARGET = build/network_app
+TARGET = $(OBJDIR)/network_app
 
 # Quell- und Objektdateien
 SOURCEDIR = src
+OBJDIR = build
 SRCS := $(shell find $(SOURCEDIR) -name '*.c')
-OBJS = $(SRCS:.c=.o)
+OBJS = $(SRCS:$(SOURCEDIR)/%.c=$(OBJDIR)/%.o)
 
-# Standard-Target: baut beide Programme
 all: $(TARGET)
 
-# --- Server ---
+
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
 # Kompilierschritt für einzelne .c-Dateien
-%.o: %.c
+$(OBJDIR)/%.o: $(SOURCEDIR)/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
 # Aufräumen
 clean:
