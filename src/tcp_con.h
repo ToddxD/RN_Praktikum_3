@@ -5,6 +5,7 @@
 
 #define BUF_SIZE 1500
 #define MAX_READ 5
+#define EOT "\004"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -29,7 +30,7 @@ int CLIENT_connect_to(const char* ip_str, int port);
 int SERVER_listen_on(const char* ip_str, int port);
 
 /**
- * Sends the given buffer over the TCP socket.
+ * Sends the given buffer + EOT over the TCP socket.
  *
  * @param socket_fd The TCP socket file descriptor to send data to.
  * @param buf The buffer to send.
@@ -47,7 +48,7 @@ int send_tcp(int socket_fd, char* buf, size_t size);
  *
  * @return -1 on error
  */
-int read_tcp(int socket_fd, char* read_buf);
+int read_tcp(int socket_fd, char** read_buf);
 
 /**
  * Closes the given TCP socket.

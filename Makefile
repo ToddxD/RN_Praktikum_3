@@ -1,6 +1,6 @@
 # Compiler und Flags
 CC = gcc
-CFLAGS = -Wall -Wno-multichar -std=gnu17
+CFLAGS = -Wall -Wno-multichar -std=gnu17 -g
 
 # Ziele (Executables)
 TARGET = $(OBJDIR)/network_app
