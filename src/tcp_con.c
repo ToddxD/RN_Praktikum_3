@@ -61,10 +61,10 @@ int SERVER_listen_on(const char* ip_str, int port) {
 
 int send_tcp(int socket_fd, char* str, size_t size) {
     size_t total_sent = 0;
-    size += sizeof(EOT);
+    size += 1;
     char* buf = malloc(size);
-    strcpy(buf, str);
-    strcat(buf, EOT);
+    memcpy(buf, str, size - 1);
+    buf[size - 1] = EOT;  // EOT anhängen
 
     while (total_sent < size) {
         size_t n = write(socket_fd, buf + total_sent, MIN(BUF_SIZE, size - total_sent));
@@ -81,13 +81,14 @@ int send_tcp(int socket_fd, char* str, size_t size) {
 
 int read_tcp(int socket_fd, char** read_buf) {
     *read_buf = malloc(BUF_SIZE * sizeof(char));
+    int read_count = 0;
 
     for (int i = 0; i < MAX_READ; i++) {
         if (i > 0) {
             *read_buf = realloc(*read_buf, BUF_SIZE * (i + 1) * sizeof(char));
         }
 
-        if (read(socket_fd, *read_buf + (i * BUF_SIZE), BUF_SIZE) < 0) {
+        if (read_count += read(socket_fd, *read_buf + (i * BUF_SIZE), BUF_SIZE) < 0) {
             fprintf(stderr, "[TCP] error reading from socket: %s\n", strerror(errno));
             free(read_buf);
             read_buf = NULL;
@@ -96,10 +97,11 @@ int read_tcp(int socket_fd, char** read_buf) {
 
         char* eot = memchr(*read_buf, '\004', BUF_SIZE);  // EOT finden und abbrechen
         if (eot) {
+            read_count = (eot - *read_buf);
             break;
         }
     }
-    return 0;
+    return read_count;
 }
 
 int close_tcp(int socket_fd) {

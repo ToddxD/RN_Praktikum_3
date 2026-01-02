@@ -5,7 +5,7 @@
 
 #define BUF_SIZE 1500
 #define MAX_READ 5
-#define EOT "\004"
+#define EOT '\004'
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 

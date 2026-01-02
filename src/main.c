@@ -9,30 +9,108 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <pthread.h>
 
+#include "server.h"
 #include "tcp_con.h"
+
+void* test_thread(void* arg) {
+    sleep(2);
+
+    int con = CLIENT_connect_to("127.0.0.1", 6969);
+
+    char read_buf[] = {
+        2, 
+        1, 
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        'a',
+        'b',
+        'c',
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        'd',
+        'e',
+        'f',
+        'H',
+        'a',
+        'l',
+        'l',
+        'o',
+        '?',
+    };
+
+
+    send_tcp(con, read_buf, sizeof(read_buf));
+
+    return NULL;
+}
 
 int main(int argc, char** argv) {
     printf("Hello, World!\n");
 
-    int sock = SERVER_listen_on("127.0.0.10", 6970);
+    start_server();
 
-    int server = CLIENT_connect_to("127.0.0.10", 6970);
+    pthread_t thread1;
+    pthread_create(&thread1, NULL, test_thread, NULL);
 
-    struct sockaddr_in con_addr;
-    socklen_t laenge = sizeof(con_addr);
-    // Handshake
-    int connection = accept(sock, (struct sockaddr*)&con_addr, &laenge);
 
-    send_tcp(server, "Hello", 5);
-    char* buffer = NULL;
-    read_tcp(connection, &buffer);
-    printf("Received: %s\n", buffer);
-    free(buffer);
 
-    close_tcp(server);
-    close_tcp(connection);
-    close_tcp(sock);
+    while(1){ }
 
     return 0;
 }
