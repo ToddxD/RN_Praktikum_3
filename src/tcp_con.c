@@ -98,6 +98,7 @@ int read_tcp(int socket_fd, char** read_buf) {
         char* eot = memchr(*read_buf, '\004', BUF_SIZE);  // EOT finden und abbrechen
         if (eot) {
             read_count = (eot - *read_buf);
+            *eot = 0;
             break;
         }
     }

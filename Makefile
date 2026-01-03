@@ -1,6 +1,7 @@
 # Compiler und Flags
 CC = gcc
-CFLAGS = -Wall -Wno-multichar -std=gnu17 -g -pthread
+CFLAGS = -Wall -Wno-multichar -std=gnu17 -g
+LDLIBS = -pthread -lncurses
 
 # Ziele (Executables)
 TARGET = $(OBJDIR)/network_app
@@ -15,7 +16,7 @@ all: $(TARGET)
 
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 # Kompilierschritt für einzelne .c-Dateien
 $(OBJDIR)/%.o: $(SOURCEDIR)/%.c | $(OBJDIR)

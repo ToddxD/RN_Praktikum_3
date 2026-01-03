@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "tcp_con.h"
+#include "queue.h"
 
 #define NAME_LEN 32
 
@@ -45,21 +46,51 @@ void getName(char* dest, char* src) {
         count--;
     }
     memcpy(dest, src, count);
+    dest[NAME_LEN] = 0;
 }
 
-void forward(const char* target, const char* msg) { printf("Forwarding message to %s\n", target); } // TODO \004 wahrscheinlich noch anhängen
+void forward(const char* target, const char* msg) { 
+	printf("Forwarding message to %s\n", target); 
+ 	// TODO \004 wahrscheinlich noch an msg anhängen
+	// target in routing tabelle suchen
+	// gesamte Nachricht (msg) an target aus routing tabelle senden
+	// keine Heart und heartresponse weiterleiten (sollte hier gar nicht ankommen)
+}
 
-void msg_login(const char* content) { printf("Handling login message\n"); }
+void msg_login(const char* sender, const char* content) { 
+	printf("Handling login message\n"); 
+	// sender zur routing tabelle hinzufügen
+	// aktualisierte ROUTE message versenden
+}
 
-void msg_chat(const char* sender, const char* content) { printf("Chat from %s: %s\n", sender, content); }
+void msg_chat(const char* sender, const char* content) { 
+	//printf("Chat from %s: %s\n", sender, content); 
+	// auf UI anzeigen
+    push(&ui_queue, content, sender);
+}
 
-void msg_logout(const char* sender) { printf("Handling logout message\n"); }
+void msg_logout(const char* sender) {
+	printf("Handling logout message\n"); 
+	// sender aus routing tabelle entfernen (disconnect)
+}
 
-void msg_route(const char* sender, const char* content) { printf("Handling route message\n"); }
+void msg_route(const char* sender, const char* content) {
+	printf("Handling route message\n");
+	// content zu routing tabelle parsen
+	// hop counts erhöhen
+	// eigene routing tabelle mit neuen Daten aktualisieren
+	// aktualisierte ROUTE message versenden
+}
 
-void msg_heart(const char* sender) { printf("Handling heart message\n"); }
+void msg_heart(const char* sender) {
+	printf("Handling heart message\n"); 
+	// HEARTRESPONSE an sender senden
+}
 
-void msg_heartresponse(const char* sender) { printf("Handling heart response message\n"); }
+void msg_heartresponse(const char* sender) {
+	printf("Handling heart response message\n"); 
+	// TODO vllt in einem anderen thread?
+}
 
 void msg_error() { printf("Handling error message\n"); }
 
@@ -94,7 +125,7 @@ void protocol_handle_msg(const int connection) {
     } else {
         switch (header.type) {
             case TYPE_LOGIN:
-                msg_login(content);
+                msg_login(sender, content);
                 break;
             case TYPE_CHAT:
                 msg_chat(sender, content);

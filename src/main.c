@@ -13,11 +13,12 @@
 
 #include "server.h"
 #include "tcp_con.h"
+#include "ui.h"
 
 void* test_thread(void* arg) {
     sleep(2);
 
-    int con = CLIENT_connect_to("127.0.0.1", 6969);
+    int con = CLIENT_connect_to("127.0.1.1", 6969);
 
     char read_buf[] = {
         2, 
@@ -86,16 +87,23 @@ void* test_thread(void* arg) {
         'd',
         'e',
         'f',
-        'H',
         'a',
-        'l',
-        'l',
-        'o',
-        '?',
+        'a',
+        'a',
+        'a',
+        'a',
+        'a',
+        'a',
     };
 
+    while(1) {
+        send_tcp(con, read_buf, sizeof(read_buf));
+        sleep(5);
 
-    send_tcp(con, read_buf, sizeof(read_buf));
+        read_buf[31] = 'x';
+        read_buf[32] = 'y';
+        read_buf[33] = 'z';
+    }
 
     return NULL;
 }
@@ -104,10 +112,11 @@ int main(int argc, char** argv) {
     printf("Hello, World!\n");
 
     start_server();
-
+    
     pthread_t thread1;
     pthread_create(&thread1, NULL, test_thread, NULL);
-
+    
+    start_ui();
 
 
     while(1){ }
