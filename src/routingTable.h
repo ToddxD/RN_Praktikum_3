@@ -10,6 +10,18 @@
 #define OFFSETHOPCOUNT 76
 #define OFFSETMESSAGECOUNT 80
 
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <regex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 typedef struct __attribute__((packed)) {
     char chatName[32];
     uint32_t adress;
@@ -19,6 +31,12 @@ typedef struct __attribute__((packed)) {
     uint16_t nextPort;
     uint32_t hopCount;
 } routingTableEntry;
+
+typedef struct __attribute__((packed)) {
+    char chatName[32];
+    uint32_t adress;
+    uint16_t port;
+} user;
 
 
 void initTable(char* ownName, int ownAdress, int ownPort);
@@ -32,5 +50,11 @@ uint64_t getRouting(char* chatName);
 int deleteFromTable(char* chatName);
 
 void tableToCharArray(uint8_t* ergebnis);
+
+void printTable();
+
+int getRoutingTableSize();
+
+void getHopsOneAway(user* hopsOneAway);
 
 #endif

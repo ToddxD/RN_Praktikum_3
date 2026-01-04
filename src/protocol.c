@@ -19,109 +19,158 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "tcp_con.h"
+#include "protocol_header.h"
 #include "queue.h"
+#include "routingTable.h"
+#include "tcp_con.h"
 
-#define NAME_LEN 32
+char ownName[32];  // TODO Name dynamisch vergeben
 
-#define TYPE_LOGIN 1
-#define TYPE_CHAT 2
-#define TYPE_LOGOUT 3
-#define TYPE_ROUTE 4
-#define TYPE_HEART 5
-#define TYPE_HEARTRESPONSE 6
-#define TYPE_ERROR 7
+void protocol_create_header(Header* header, const char* sendername, const char* targetname,
+                            uint8_t type) {
+    memset(header, 0, sizeof(Header));
+    memcpy(header->sendername, sendername, 32);
+    memcpy(header->targetname, targetname, 32);
+    header->type = type;
+}
 
-typedef struct __attribute__((packed)) {
-    u_int8_t type;
-    u_int8_t version;
-    char sendername[NAME_LEN];
-    char targetname[NAME_LEN];
-} Header;
+void do_login(char* chat_name, int local_port, char* target_host, int target_port) {
+    printf("Sende login\n");
+    Header newHeader;
+    int offset = 0;
+    protocol_create_header(&newHeader, ownName, "???", TYPE_LOGIN);
+    char message[sizeof(Header) + MSG_SIZE];
+    memcpy(message + offset, &newHeader, sizeof(Header));
+    offset += sizeof(Header);
+    memcpy(message + offset, chat_name, strlen(chat_name) + 1);
+    offset += strlen(chat_name) + 1;
+    struct in_addr addr;
+    inet_aton(target_host, &addr);
+    memcpy(message + offset, &addr.s_addr, 4);
+    offset += 4;
+    memcpy(message + offset, &target_port, 2);
+    offset += 2;
+    message[offset] = '\004';
+    message[offset + 1] = 0;
 
-void getName(char* dest, char* src) {
-    int count = NAME_LEN;
-    while (*src == 0) {
-        src++;
-        count--;
+    push_send(((uint64_t)addr.s_addr << 32) | (uint64_t)target_port, message);
+}
+
+void forward(const char* target, Header header, const char* msg) {
+    printf("Forwarding message to %s\n", target);
+    uint64_t targetAdresseUndPort = getRouting(target);
+    if (targetAdresseUndPort == 0) {
+        printf("No route to target %s\n", target);
+        return;
     }
-    memcpy(dest, src, count);
-    dest[NAME_LEN] = 0;
+    char message[sizeof(Header) + sizeof(msg)];
+    memcpy(message, &header, sizeof(Header));
+    memcpy(message + sizeof(Header), msg, sizeof(msg));
+    push_send(targetAdresseUndPort, message);
+
+    // TODO \004 wahrscheinlich noch an msg anhängen
+    // target in routing tabelle suchen
+    // gesamte Nachricht (msg) an target aus routing tabelle senden
+    // keine Heart und heartresponse weiterleiten (sollte hier gar nicht ankommen)
 }
 
-void forward(const char* target, const char* msg) { 
-	printf("Forwarding message to %s\n", target); 
- 	// TODO \004 wahrscheinlich noch an msg anhängen
-	// target in routing tabelle suchen
-	// gesamte Nachricht (msg) an target aus routing tabelle senden
-	// keine Heart und heartresponse weiterleiten (sollte hier gar nicht ankommen)
+void msg_login(const char* sender, const char* content) {
+    printf("Handling login message\n");
+    uint8_t contentNew[OFFSETMESSAGECOUNT];
+    memset(contentNew, 0, sizeof(contentNew));
+    memcpy(contentNew, content, OFFSETMESSAGECOUNT);
+    memcpy(contentNew + OFFSETNEXTCHATNAME, content + OFFSETNEXTCHATNAME, content);
+    contentNew[OFFSETHOPCOUNT] = 0;  // hop count auf 0 setzen
+    tableUpdate(contentNew, sizeof(content));
+    uint8_t ergebnis[getRoutingTableSize()];
+    memset(ergebnis, 0, sizeof(ergebnis));
+    tableToCharArray(ergebnis);
+    // sender zur routing tabelle hinzufügen
+    // aktualisierte ROUTE message versenden
+
+    push_ui("<Empfänger hat sich angemeldet!>", sender);
+
+    user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
+    memset(hopsOneAway, 0, sizeof(hopsOneAway));
+    getHopsOneAway(hopsOneAway);
+    int index = 0;
+
+    while (hopsOneAway[index].chatName[0] != '\0' &&
+           index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
+        Header header;
+        protocol_create_header(&header, ownName, hopsOneAway[index].chatName, TYPE_ROUTE);
+        char message[sizeof(Header) + sizeof(ergebnis)];
+        memcpy(message, &header, sizeof(Header));
+        memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
+        push_send(((uint64_t)hopsOneAway[index].adress) << 32 | (uint64_t)hopsOneAway[index].port,
+                  message);
+    }
 }
 
-void msg_login(const char* sender, const char* content) { 
-	printf("Handling login message\n"); 
-	// sender zur routing tabelle hinzufügen
-	// aktualisierte ROUTE message versenden
-}
-
-void msg_chat(const char* sender, const char* content) { 
-	//printf("Chat from %s: %s\n", sender, content); 
-	// auf UI anzeigen
-    push(&ui_queue, content, sender);
+void msg_chat(const char* sender, const char* content) {
+    // printf("Chat from %s: %s\n", sender, content);
+    //  auf UI anzeigen
+    push_ui(content, sender);
 }
 
 void msg_logout(const char* sender) {
-	printf("Handling logout message\n"); 
-	// sender aus routing tabelle entfernen (disconnect)
+    printf("Handling logout message\n");
+    // sender aus routing tabelle entfernen (disconnect)
+    push_ui("<Empfänger hat sich abgemeldet!>", sender);
 }
 
 void msg_route(const char* sender, const char* content) {
-	printf("Handling route message\n");
-	// content zu routing tabelle parsen
-	// hop counts erhöhen
-	// eigene routing tabelle mit neuen Daten aktualisieren
-	// aktualisierte ROUTE message versenden
+    printf("Handling route message\n");
+    // content zu routing tabelle parsen
+    // hop counts erhöhen
+    // eigene routing tabelle mit neuen Daten aktualisieren
+    // aktualisierte ROUTE message versenden
 }
 
 void msg_heart(const char* sender) {
-	printf("Handling heart message\n"); 
-	// HEARTRESPONSE an sender senden
+    printf("Handling heart message\n");
+    // HEARTRESPONSE an sender senden
 }
 
 void msg_heartresponse(const char* sender) {
-	printf("Handling heart response message\n"); 
-	// TODO vllt in einem anderen thread?
+    printf("Handling heart response message\n");
+    // TODO vllt in einem anderen thread?
 }
 
-void msg_error() { printf("Handling error message\n"); }
+void msg_error(const char* sender) {
+    printf("Handling error message\n");
+    push_ui("<Fehler beim Senden!>", sender);
+}
 
 void protocol_handle_msg(const int connection) {
     char* read_buf;
-	int count = read_tcp(connection, &read_buf);
+    int count = read_tcp(connection, &read_buf);
     if (count < 0) {
         if (errno != EAGAIN) {
             close(connection);
-    		free(read_buf);
-			return;
+            free(read_buf);
+            return;
         }
-    } 
-	
-	if (count < sizeof(Header)) {
+    }
+
+    if (count < sizeof(Header)) {
         printf("[Server] Message too short\n");
-		free(read_buf);
-		return;
+        free(read_buf);
+        return;
     }
 
     Header header;
     memcpy(&header, read_buf, sizeof(Header));
 
-	char sender[NAME_LEN + 1] = {};
+    char sender[NAME_LEN + 1] = {};
     getName(sender, header.sendername);
     char target[NAME_LEN + 1] = {};
     getName(target, header.targetname);
-	char* content = read_buf + sizeof(Header);
+    char* content = read_buf + sizeof(Header);
 
-    if (strcmp(target, "def") != 0) {  // TODO Name dynamisch vergeben
-        forward(target, read_buf);
+    printf("Nachricht bekommen, Type: %d, From: %s, To: %s\n", header.type, sender, target);
+    if (strcmp(target, ownName) != 0) {  // TODO Name dynamisch vergeben
+        forward(target, header, content);
     } else {
         switch (header.type) {
             case TYPE_LOGIN:
@@ -143,7 +192,7 @@ void protocol_handle_msg(const int connection) {
                 msg_heartresponse(sender);
                 break;
             case TYPE_ERROR:
-                msg_error();
+                msg_error(sender);
                 break;
             default:
                 printf("[Server] Unknown message type: %d\n", header.type);

@@ -13,7 +13,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-routingTableEntry *routingTable; 
 
 routingTableEntry routingTable[5] = {0}; 
 int freeEntries = 99;
@@ -76,6 +75,31 @@ void tableUpdate(uint8_t* message, int length){
     }
 }
 
+void getHopsOneAway(user* hopsOneAway){
+    int count = 0;
+    for(int i = 0; i < sizeof(routingTable)/80; i++){
+        if(routingTable[i].hopCount == 1){
+            memcpy(hopsOneAway[count].chatName, routingTable[i].chatName, 32);
+            hopsOneAway[count].adress = routingTable[i].adress;
+            hopsOneAway[count].port = routingTable[i].port;
+            count++;
+        }
+    }
+    hopsOneAway[count].chatName[0] = '\0';
+}
+
+char* getChatName(uint64_t adressUndPort){
+    uint32_t adress = (uint32_t)(adressUndPort >> 32);
+    uint16_t port = (uint16_t)(adressUndPort & 0xFFFFFFFF);
+    for(int i = 0; i < sizeof(routingTable)/80; i++){
+        if(routingTable[i].adress == adress && routingTable[i].port == port){
+            return routingTable[i].chatName;
+        }
+    }
+    return NULL;
+}
+
+
 uint64_t getRouting(char* chatName){
     for(int i = 0; i < sizeof(routingTable)/80; i++){
         if(strcmp(routingTable[i].chatName, chatName) == 0){
@@ -95,6 +119,10 @@ int deleteFromTable(char* chatName){
         }
     }
     return -1;
+}
+
+int getRoutingTableSize(){
+    return (sizeof(routingTable));
 }
 
 void tableToCharArray(uint8_t* ergebnis){

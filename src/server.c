@@ -23,13 +23,12 @@
 #include "protocol.h"
 #include "tcp_con.h"
 
-#define PORT 6969
-
 #define MAX_EVENTS 20  // maximal 20 Clients gleichzeitig
 
 static bool running = false;
+static int port = 0;
 
-void* thread_loop(void* arg) {
+void* server_loop(void* arg) {
     running = true;
 
     char hostname[256];
@@ -37,7 +36,7 @@ void* thread_loop(void* arg) {
     struct hostent* host = gethostbyname(hostname);
     struct in_addr* addr = (struct in_addr*)host->h_addr_list[0];
 
-    int server_socket = SERVER_listen_on(inet_ntoa(*addr), PORT);
+    int server_socket = SERVER_listen_on(inet_ntoa(*addr), port);
 
     int epoll = epoll_create1(0);
     if (epoll < 0) {
@@ -93,10 +92,11 @@ void* thread_loop(void* arg) {
     return NULL;
 }
 
-void start_server() {
+void start_server(int _port, char* chat_name) {
     pthread_t thread1;
+    port = _port;
 
-    pthread_create(&thread1, NULL, thread_loop, NULL);
+    pthread_create(&thread1, NULL, server_loop, NULL);
 }
 
 void stop_server() { running = false; }

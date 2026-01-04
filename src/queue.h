@@ -2,28 +2,38 @@
 #define QUEUE_H
 
 #include <pthread.h>
+#include "protocol_header.h"
 
-#define MAX_TEXT 256
 #define MAX_QUEUE_SIZE 100
 
-typedef struct Queue {
-    struct QueueMessage* head;
-    pthread_mutex_t queue_mutex;
-} Queue;
-
-typedef struct QueueMessage {
-    char text[MAX_TEXT];
+typedef struct QueueMessage_UI {    
+    char text[MSG_SIZE];
     char name[32];
-    struct QueueMessage* next;
-} QueueMessage;
+    struct QueueMessage_UI* next;
+} QueueMessage_UI;
 
-extern Queue ui_queue;
-extern Queue send_queue;
+typedef struct QueueMessage_SEND {
+    uint64_t dest_addr;
+    char msg[sizeof(Header) + MSG_SIZE];
+    struct QueueMessage_SEND* next;
+} QueueMessage_SEND;
 
-int pop(Queue* queue, char* text_buf, char* name_buf);
+typedef struct Queue_UI {
+    struct QueueMessage_UI* head;
+    pthread_mutex_t queue_mutex;
+} Queue_UI;
 
-int push(Queue* queue, const char* text, const char* name);
+typedef struct Queue_SEND {
+    struct QueueMessage_SEND* head;
+    pthread_mutex_t queue_mutex;
+} Queue_SEND;
 
-int is_queue_empty(Queue* queue);
+int pop_ui(char* text_buf, char* name_buf);
+
+int push_ui(const char* text_buf, const char* name_buf);
+
+int pop_send(uint64_t* dest_addr, char* msg);
+
+int push_send(const uint64_t dest_addr, const char* msg);
 
 #endif  // QUEUE_H

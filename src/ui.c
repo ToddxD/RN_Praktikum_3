@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "queue.h"
+#include "protocol_header.h"
 
 /* ===================== Tab-Logik ===================== */
 
@@ -221,7 +222,7 @@ int start_ui() {
         char msg_text[MAX_TEXT];
         char msg_name[32];
         bool new_msg = false;
-        while (pop(&ui_queue, msg_text, msg_name) == 0) {
+        while (pop_ui(msg_text, msg_name) == 0) {
             add_foreign_message(&tabs, msg_name, msg_text);
             new_msg = true;
         }
