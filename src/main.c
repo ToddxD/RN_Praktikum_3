@@ -14,6 +14,7 @@
 #include "server.h"
 #include "tcp_con.h"
 #include "ui.h"
+#include "routingTable.h"
 
 void* test_thread(void* arg) {
     sleep(2);

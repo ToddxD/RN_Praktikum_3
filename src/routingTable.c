@@ -13,36 +13,95 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-typedef struct routingTableEntry {
-    char chatName[32];
-    uint32_t adress;
-    uint16_t port;
-    char nextChatName[32];
-    uint32_t nextAdress;
-    uint16_t nextPort;
-    uint32_t hopCount;
-} routingTableEntry;
-
 routingTableEntry *routingTable; 
+
+routingTableEntry routingTable[5] = {0}; 
+int freeEntries = 99;
 
 
 void initTable(char* ownName, int ownAdress, int ownPort){
-    routingTable = calloc(1, sizeof(routingTableEntry));
-    *routingTable[0].chatName = *ownName;
+    memset(routingTable, 0, sizeof(routingTable));
+    memcpy(routingTable[0].chatName, ownName, strlen(ownName)+1);
     routingTable[0].adress = ownAdress;
     routingTable[0].port = ownPort;
     routingTable[0].hopCount = 0;
 }
 
-void tabeUpdate(uint8_t* message){
-
+int checkNameInTable(char* chatName){
+    for(int i = 0; i < sizeof(routingTable)/80; i++){
+        if(strcmp(routingTable[i].chatName, chatName) == 0){
+            return i;
+        }
+    }
+    return 0;
 }
 
-int tableToCharArray(uint8_t* result){
-    uint8_t* ergebnis = calloc(sizeof(routingTable), sizeof(char));
-    for(int i = 0; i <= sizeof(routingTable)/80; i++){
-         for(int j = 0; j< 32; j++){
-            ergebnis[j+i*80] = (uint8_t)routingTable[i].chatName[j];
+void tableUpdate(uint8_t* message, int length){
+    uint8_t workingArray[OFFSETMESSAGECOUNT];
+    memset(workingArray, 0, OFFSETMESSAGECOUNT);
+    for (int i = 0; i < length/OFFSETMESSAGECOUNT; i++)
+    {
+        memcpy(workingArray, message + i*OFFSETMESSAGECOUNT, OFFSETMESSAGECOUNT);
+        char charName[32];
+        memcpy(charName, workingArray + OFFSETCHATNAME, 32);
+        int index = checkNameInTable(charName);
+        if(!index){
+            routingTableEntry newEntry;
+            memcpy(newEntry.chatName, workingArray + OFFSETCHATNAME, 32);
+            uint32_t adress = ((uint32_t)(workingArray[OFFSETADRESS] << 24)) | ((uint32_t)(workingArray[OFFSETADRESS+1] << 16)) | ((uint32_t)(workingArray[OFFSETADRESS+2] << 8)) | ((uint32_t)(workingArray[OFFSETADRESS+3]));
+            newEntry.adress = adress;
+            newEntry.port = (uint16_t)(workingArray[OFFSETPORT] << 8) | (uint16_t)(workingArray[OFFSETPORT+1]);
+            memcpy(newEntry.nextChatName, workingArray + OFFSETNEXTCHATNAME, 32);
+            newEntry.nextAdress = ((uint32_t)(workingArray[OFFSETNEXTADRESS] << 24)) | ((uint32_t)(workingArray[OFFSETNEXTADRESS+1] << 16)) | ((uint32_t)(workingArray[OFFSETNEXTADRESS+2] << 8)) | ((uint32_t)(workingArray[OFFSETNEXTADRESS+3]));
+            newEntry.nextPort = (uint16_t)(workingArray[OFFSETNEXTPORT] << 8) | (uint16_t)(workingArray[OFFSETNEXTPORT+1]);
+            newEntry.hopCount = (uint32_t)(((workingArray[OFFSETHOPCOUNT] << 24) | (uint32_t)(workingArray[OFFSETHOPCOUNT+1] << 16) | (uint32_t)(workingArray[OFFSETHOPCOUNT+2] << 8) | (uint32_t)(workingArray[OFFSETHOPCOUNT+3]))+1);
+            if(freeEntries > 0){
+                for(int j = 0; j < sizeof(routingTable)/80; j++){
+                    if(routingTable[j].hopCount == 0 && strcmp(routingTable[j].chatName, "") == 0){
+                        routingTable[j] = newEntry;
+                        freeEntries--;
+                        break;
+                    }
+                }
+            } else {
+                printf("Routing Table full, cannot add new entry for %s\n", newEntry.chatName);
+                continue;
+            }
+        } else if(routingTable[index].hopCount > (uint32_t)(((workingArray[OFFSETHOPCOUNT] << 24) | (uint32_t)(workingArray[OFFSETHOPCOUNT+1] << 16) | (uint32_t)(workingArray[OFFSETHOPCOUNT+2] << 8) | (uint32_t)(workingArray[OFFSETHOPCOUNT+3]))+1)){
+            memcpy(routingTable[index].nextChatName, workingArray + OFFSETNEXTCHATNAME, 32);
+            routingTable[index].nextAdress = (uint32_t)(workingArray[OFFSETNEXTADRESS] << 24) | (uint32_t)(workingArray[OFFSETNEXTADRESS+1] << 16) | (uint32_t)(workingArray[OFFSETNEXTADRESS+2] << 8) | (uint32_t)(workingArray[OFFSETNEXTADRESS+3]);
+            routingTable[index].nextPort = (uint16_t)(workingArray[OFFSETNEXTPORT] << 8) | (uint16_t)(workingArray[OFFSETNEXTPORT+1]);
+            routingTable[index].hopCount = (uint32_t)(((workingArray[OFFSETHOPCOUNT] << 24) | (uint32_t)(workingArray[OFFSETHOPCOUNT+1] << 16) | (uint32_t)(workingArray[OFFSETHOPCOUNT+2] << 8) | (uint32_t)(workingArray[OFFSETHOPCOUNT+3]))+1);
+        }
+    }
+}
+
+uint64_t getRouting(char* chatName){
+    for(int i = 0; i < sizeof(routingTable)/80; i++){
+        if(strcmp(routingTable[i].chatName, chatName) == 0){
+            uint64_t adressAndPort = ((uint64_t)routingTable[i].nextAdress << 32) | (uint64_t)routingTable[i].nextPort;
+            return adressAndPort;
+        }
+    }
+    return -1;
+}
+
+int deleteFromTable(char* chatName){
+    for(int i = 0; i < sizeof(routingTable)/80; i++){
+        if(strcmp(routingTable[i].chatName, chatName) == 0){
+            memset(&routingTable[i], 0, sizeof(routingTableEntry));
+            freeEntries++;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+void tableToCharArray(uint8_t* ergebnis){
+    for(int i = 0; i < sizeof(routingTable)/80; i++){
+        uint8_t *name = (uint8_t*)routingTable[i].chatName;
+         for(int j = 0; j < 32; j++){
+            ergebnis[j+i*80] = name[j];
         }
     ergebnis[i*80+OFFSETADRESS] = (uint8_t)(routingTable[i].adress >> 24);
     ergebnis[i*80+OFFSETADRESS+1] = (uint8_t)(routingTable[i].adress >> 16);
@@ -66,5 +125,17 @@ int tableToCharArray(uint8_t* result){
     }
 }
 
-
+void printRoutingTable(){
+    printf("Routing Table:\n");
+    for(int i = 0; i < sizeof(routingTable)/80; i++){
+            printf("Entry %d:\n", i);
+            printf(" Chat Name: %s\n", routingTable[i].chatName);
+            printf(" Address: %u.%u.%u.%u\n", (uint8_t)(routingTable[i].adress >> 24), (uint8_t)(routingTable[i].adress >> 16), (uint8_t)(routingTable[i].adress >> 8), (uint8_t)(routingTable[i].adress));
+            printf(" Port: %u\n", routingTable[i].port);
+            printf(" Next Chat Name: %s\n", routingTable[i].nextChatName);
+            printf(" Next Address: %u.%u.%u.%u\n", (uint8_t)(routingTable[i].nextAdress >> 24), (uint8_t)(routingTable[i].nextAdress >> 16), (uint8_t)(routingTable[i].nextAdress >> 8), (uint8_t)(routingTable[i].nextAdress));
+            printf(" Next Port: %u\n", routingTable[i].nextPort);
+            printf(" Hop Count: %u\n", routingTable[i].hopCount);
+    }
+}
 
