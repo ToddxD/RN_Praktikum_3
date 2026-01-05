@@ -59,8 +59,8 @@ void do_login(const char* chat_name, const int local_port, const char* target_ho
     memcpy(message + offset, &addr.s_addr, 4);
     offset += 4;
     //memcpy(message + offset, &target_port, 2);
-    message[offset] = (uint8_t)((local_port >> 8) & 0xFF);
-    message[offset + 1] = (uint8_t)(local_port & 0xFF);
+    message[offset] = (uint8_t)((target_port >> 8) & 0xFF);
+    message[offset + 1] = (uint8_t)(target_port & 0xFF);
     offset += 2;
     message[offset] = '\004';
 
@@ -138,9 +138,32 @@ void msg_logout(const char* sender) {
     push_ui("<Empfänger hat sich abgemeldet!>", sender);
 }
 
-void msg_route(const char* sender, const char* content) {
+void msg_route(const char* sender, const char* content, int size) {
+    tableUpdate((uint8_t*)content, size);
     printf("Handling route message\n");
-    // content zu routing tabelle parsen
+    uint8_t message[getRoutingTableSize()];
+    memset(message, 0, sizeof(message));
+    tableToCharArray(message);
+    user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
+    memset(hopsOneAway, 0, sizeof(hopsOneAway));
+    getHopsOneAway(hopsOneAway);
+    int index = 0;
+    while (hopsOneAway[index].chatName[0] != '\0' &&
+           index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
+        Header header;
+        protocol_create_header(&header, sender, hopsOneAway[index].chatName, TYPE_ROUTE);
+        char fullMessage[sizeof(Header) + sizeof(message)];
+        memcpy(fullMessage, &header, sizeof(Header));
+        memcpy(fullMessage + sizeof(Header), message, sizeof(message));
+        if(strcmp(hopsOneAway[index].chatName, sender) == 0){
+            printf("Not sending ROUTE to sender %s\n", sender);
+            index++;
+            continue;
+        }
+        push_send((getRouting(hopsOneAway[index].chatName)),
+                  fullMessage, sizeof(fullMessage));
+        index++;
+    }
     // hop counts erhöhen
     // eigene routing tabelle mit neuen Daten aktualisieren
     // aktualisierte ROUTE message versenden
@@ -202,7 +225,7 @@ void protocol_handle_msg(const int connection) {
                 msg_logout(sender);
                 break;
             case TYPE_ROUTE:
-                msg_route(sender, content);
+                msg_route(sender, content, count - sizeof(Header));
                 break;
             case TYPE_HEART:
                 msg_heart(sender);
