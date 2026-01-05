@@ -1,7 +1,7 @@
 # Compiler und Flags
 CC = gcc
 CFLAGS = -Wall -Wno-multichar -std=gnu17 -g
-LDLIBS = -pthread -lncurses
+LDLIBS = -pthread
 
 # Ziele (Executables)
 TARGET = $(OBJDIR)/network_app

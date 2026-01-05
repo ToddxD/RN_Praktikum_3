@@ -1,269 +1,237 @@
-#include "ui.h"
-
-#include <ncurses.h>
+#define _POSIX_C_SOURCE 200112L
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <termios.h>
+#include <sys/select.h>
+#include <sys/ioctl.h>
 
+#include "ui.h"
 #include "queue.h"
 #include "protocol_header.h"
 #include "protocol.h"
 
-/* ===================== Tab-Logik ===================== */
+static Tab tabs[MAX_TABS];
+static int tab_count = 0;
+static int active_tab = -1;
 
-void init_tabs(TabManager* tm) {
-    tm->tab_count = 0;
-    tm->active = -1;
+static struct termios orig_term;
+static int rows, cols;
+
+/* ---------- Terminal ---------- */
+
+void enable_raw(void) {
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &orig_term);
+    t = orig_term;
+    t.c_lflag &= ~(ICANON | ECHO);
+    t.c_cc[VMIN] = 0;
+    t.c_cc[VTIME] = 0;
+    tcsetattr(STDIN_FILENO, TCSANOW, &t);
 }
 
-int find_or_create_tab(TabManager* tm, const char* username) {
-    for (int i = 0; i < tm->tab_count; i++) {
-        if (strcmp(tm->tabs[i].name, username) == 0) return i;
+void disable_raw(void) {
+    tcsetattr(STDIN_FILENO, TCSANOW, &orig_term);
+}
+
+void get_size(void) {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    rows = w.ws_row;
+    cols = w.ws_col;
+}
+
+/* ---------- ANSI Helpers ---------- */
+
+void cls(void) {
+    printf("\033[2J\033[H");
+}
+
+void move(int r, int c) {
+    printf("\033[%d;%dH", r, c);
+}
+
+void color(const char *c) {
+    printf("%s", c);
+}
+
+/* ---------- Tabs ---------- */
+
+int find_tab(const char *user) {
+    for (int i = 0; i < tab_count; i++)
+        if (strcmp(tabs[i].user, user) == 0)
+            return i;
+    return -1;
+}
+
+void add_message(const char *user, const char *text, int self) {
+    int i = find_tab(user);
+    if (i < 0 && tab_count < MAX_TABS) {
+        i = tab_count++;
+        strncpy(tabs[i].user, user, sizeof(tabs[i].user)-1);
+        tabs[i].msg_count = 0;
+        tabs[i].unread = 0;
+        if (active_tab < 0)
+            active_tab = i;
     }
 
-    if (tm->tab_count >= MAX_TABS) return -1;
+    Tab *t = &tabs[i];
+    Message *m = &t->msgs[t->msg_count++];
+    strncpy(m->text, text, MAX_TEXT-1);
+    m->self = self;
 
-    ChatTab* t = &tm->tabs[tm->tab_count];
-    strncpy(t->name, username, sizeof(t->name) - 1);
-    t->name[sizeof(t->name) - 1] = '\0';
-    t->msg_count = 0;
-
-    tm->tab_count++;
-
-    if (tm->active == -1) tm->active = 0;
-
-    return tm->tab_count - 1;
+    if (!self && i != active_tab)
+        t->unread = 1;
 }
 
-void add_own_message(TabManager* tm, const char* text) {
-    if (tm->active == -1) return;
+/* ---------- Rendering ---------- */
 
-    ChatTab* tab = &tm->tabs[tm->active];
-    if (tab->msg_count >= MAX_MSGS) return;
+void draw_tabs(void) {
+    move(1, 1);
+    for (int i = 0; i < tab_count; i++) {
+        if (i == active_tab)
+            color("\033[7m");
+        else if (tabs[i].unread)
+            color("\033[33m");
+        else
+            color("\033[0m");
 
-    Message* m = &tab->msgs[tab->msg_count++];
-    strncpy(m->text, text, sizeof(m->text) - 1);
-    m->text[sizeof(m->text) - 1] = '\0';
-    m->is_own = 1;
-}
-
-void add_foreign_message(TabManager* tm, const char* from_user, const char* text) {
-    int idx = find_or_create_tab(tm, from_user);
-    if (idx < 0) return;
-
-    ChatTab* tab = &tm->tabs[idx];
-    if (tab->msg_count >= MAX_MSGS) return;
-
-    Message* m = &tab->msgs[tab->msg_count++];
-    strncpy(m->text, text, sizeof(m->text) - 1);
-    m->text[sizeof(m->text) - 1] = '\0';
-    m->is_own = 0;
-
-    if (idx != tm->active) {
-        tab->unread_count++;
+        printf(" %s ", tabs[i].user);
+        color("\033[0m");
+        printf(" ");
     }
 }
 
-void switch_tab(TabManager* tm, int dir) {
-    if (tm->tab_count == 0) return;
+void draw_messages(void) {
+    Tab *t = &tabs[active_tab];
+    int line = 3;
 
-    tm->active = (tm->active + dir + tm->tab_count) % tm->tab_count;
-
-    tm->tabs[tm->active].unread_count = 0;
-}
-
-/* ===================== Rendering ===================== */
-
-void render_tabs(WINDOW *win, const TabManager *tm)
-{
-    werase(win);
-
-    if (tm->tab_count == 0) {
-        wattron(win, A_DIM);
-        wprintw(win, " No conversations ");
-        wattroff(win, A_DIM);
-        wrefresh(win);
-        return;
-    }
-
-    for (int i = 0; i < tm->tab_count; i++) {
-
-        ChatTab *tab = &tm->tabs[i];
-
-        if (i == tm->active)
-            wattron(win, A_REVERSE);
-
-        if (tab->unread_count && i != tm->active)
-            wattron(win, COLOR_PAIR(3) | A_BOLD);
-
-        if (tab->unread_count == 0) {
-            wprintw(win, " %s ", tab->name);
-        } else {
-            wprintw(win, " %s (%d) ", tab->name, tab->unread_count);
-        }
-
-
-        if (tab->unread_count && i != tm->active)
-            wattroff(win, COLOR_PAIR(3) | A_BOLD);
-
-        if (i == tm->active)
-            wattroff(win, A_REVERSE);
-    }
-
-    wrefresh(win);
-}
-
-static int text_width(const char* s) { return strlen(s); }
-
-void render_chat(WINDOW* inner, const TabManager* tm) {
-    werase(inner);
-
-    if (tm->active == -1) {
-        wattron(inner, A_DIM);
-        mvwprintw(inner, 0, 0, "Waiting for messages...");
-        wattroff(inner, A_DIM);
-        wrefresh(inner);
-        return;
-    }
-
-    const ChatTab* tab = &tm->tabs[tm->active];
-
-    int maxy, maxx;
-    getmaxyx(inner, maxy, maxx);
-
-    int start = tab->msg_count - maxy;
-    if (start < 0) start = 0;
-
-    int row = 0;
-
-    for (int i = start; i < tab->msg_count && row < maxy; i++) {
-        const Message* m = &tab->msgs[i];
-
+    for (int i = 0; i < t->msg_count && line < rows - 2; i++) {
+        Message *m = &t->msgs[i];
         int len = strlen(m->text);
-        int x;
 
-        if (m->is_own) {
-            /* rechtsbündig */
-            x = maxx - len - 1;
-            if (x < 0) x = 0;
-
-            wattron(inner, COLOR_PAIR(1));
-            wmove(inner, row, x);
-            waddstr(inner, m->text);
-            wattroff(inner, COLOR_PAIR(1));
+        if (m->self) {
+            color("\033[32m");
+            move(line++, cols - len - 1);
         } else {
-            /* linksbündig */
-            wattron(inner, COLOR_PAIR(2));
-            wmove(inner, row, 0);
-            waddstr(inner, m->text);
-            wattroff(inner, COLOR_PAIR(2));
+            color("\033[34m");
+            move(line++, 1);
         }
-
-        /* >>> WICHTIG: echte Cursorposition abfragen <<< */
-        int new_y, new_x;
-        getyx(inner, new_y, new_x);
-
-        row = new_y + 1;
-
-        if (row >= maxy) break;
+        printf("%s", m->text);
+        color("\033[0m");
     }
-
-    wrefresh(inner);
 }
 
-/* ===================== Main ===================== */
+static void add_message_internal(int tab, const char *text, int self) {
+    Tab *t = &tabs[tab];
+
+    if (t->msg_count >= MAX_MSGS)
+        return;
+
+    Message *m = &t->msgs[t->msg_count++];
+    strncpy(m->text, text, MAX_TEXT - 1);
+    m->text[MAX_TEXT - 1] = 0;
+    m->self = self;
+}
+
+void add_own_message(const char *text) {
+    if (active_tab < 0)
+        return;
+
+    add_message_internal(active_tab, text, 1);
+}
+
+void add_foreign_message(const char *user, const char *text) {
+    int i = find_tab(user);
+
+    if (i < 0 && tab_count < MAX_TABS) {
+        i = tab_count++;
+        strncpy(tabs[i].user, user, sizeof(tabs[i].user) - 1);
+        tabs[i].user[sizeof(tabs[i].user) - 1] = 0;
+        tabs[i].msg_count = 0;
+        tabs[i].unread = 0;
+
+        if (active_tab < 0)
+            active_tab = i;
+    }
+
+    add_message_internal(i, text, 0);
+
+    if (i != active_tab)
+        tabs[i].unread = 1;
+}
+
+void draw_input(const char *buf) {
+    move(rows, 1);
+    printf("\033[0K> %s", buf);
+}
+
+void redraw(const char *input) {
+    cls();
+    draw_tabs();
+    if (active_tab >= 0)
+        draw_messages();
+    draw_input(input);
+    fflush(stdout);
+}
+
+/* ---------- Input ---------- */
+
+int read_key(void) {
+    fd_set fds;
+    struct timeval tv = {0, 100000};
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+
+    if (select(1, &fds, NULL, NULL, &tv) > 0) {
+        char c;
+        if (read(0, &c, 1) == 1)
+            return c;
+    }
+    return -1;
+}
+
+/* ---------- Main ---------- */
 
 int start_ui() {
-    initscr();
-    cbreak();
-    noecho();
-    curs_set(1);
-
-    set_escdelay(25);
-
-    int h, w;
-    getmaxyx(stdscr, h, w);
-
-    WINDOW* tabwin = newwin(1, w, 0, 0);
-    WINDOW* chatbox = newwin(h - 4, w, 1, 0);
-    WINDOW* chat = derwin(chatbox, h - 6, w - 2, 1, 1);
-    WINDOW* inputbox = newwin(3, w, h - 3, 0);
-
-    keypad(inputbox, TRUE);
-
-    box(chatbox, 0, 0);
-    box(inputbox, 0, 0);
-
-    nodelay(inputbox, TRUE);
-
-    start_color();
-    use_default_colors();
-
-    init_pair(1, COLOR_GREEN, -1);  // eigene Nachrichten
-    init_pair(2, COLOR_CYAN, -1);   // fremde Nachrichten
-    init_pair(3, COLOR_YELLOW, -1);   // Tab mit neuen Nachrichten
-
-    scrollok(chat, TRUE);
-
-    TabManager tabs;
-    init_tabs(&tabs);
-
     char input[MAX_TEXT] = {0};
-    int pos = 0;
+    int ipos = 0;
 
-    render_tabs(tabwin, &tabs);
-    render_chat(chat, &tabs);
+    enable_raw();
+    atexit(disable_raw);
+    get_size();
 
     while (1) {
-        werase(inputbox);
-        box(inputbox, 0, 0);
-        mvwprintw(inputbox, 1, 2, "> %s", input);
-        wmove(inputbox, 1, 4 + pos);
-        wrefresh(inputbox);
+        redraw(input);
+        int k = read_key();
 
         // nach neuen Nachrichten schauen:
         char msg_text[MAX_TEXT];
         char msg_name[32];
-        bool new_msg = false;
         while (pop_ui(msg_text, msg_name) == 0) {
-            add_foreign_message(&tabs, msg_name, msg_text);
-            new_msg = true;
-        }
-        if (new_msg) {
-            render_tabs(tabwin, &tabs);
-            render_chat(chat, &tabs);
+            add_foreign_message(msg_name, msg_text);
         }
 
-        int ch = wgetch(inputbox);
-
-        if (ch == '\n') {
-            if (pos > 0) {
-                add_own_message(&tabs, input);
-                do_chat(tabs.tabs[tabs.active].name, input);
-                render_tabs(tabwin, &tabs);
-                render_chat(chat, &tabs);
+        if (k == 27) { /* ESC */
+            char seq[2];
+            if (read(0, seq, 2) == 2 && seq[0] == '[') {
+                if (seq[1] == 'C' && active_tab < tab_count-1)
+                    active_tab++;
+                if (seq[1] == 'D' && active_tab > 0)
+                    active_tab--;
+                tabs[active_tab].unread = 0;
             }
-            pos = 0;
-            input[0] = '\0';
-        } else if (ch == KEY_LEFT) {
-            switch_tab(&tabs, -1);
-            render_tabs(tabwin, &tabs);
-            render_chat(chat, &tabs);
-        } else if (ch == KEY_RIGHT) {
-            switch_tab(&tabs, 1);
-            render_tabs(tabwin, &tabs);
-            render_chat(chat, &tabs);
-        } else if ((ch == KEY_BACKSPACE || ch == 127) && pos > 0) {
-            input[--pos] = '\0';
-        } else if (ch >= 32 && ch < 127 && pos < MAX_TEXT - 1) {
-            input[pos++] = ch;
-            input[pos] = '\0';
-        }
-
-        if (ch != ERR) {
-            render_tabs(tabwin, &tabs);
-            render_chat(chat, &tabs);
+        } else if (k == '\n' && ipos > 0 && active_tab >= 0) {
+            add_own_message(input);
+            do_chat(tabs[active_tab].user, input);
+            ipos = 0;
+            input[0] = 0;
+        } else if (k == 127 && ipos > 0) {
+            input[--ipos] = 0;
+        } else if (k > 31 && k < 127 && ipos < MAX_TEXT-1) {
+            input[ipos++] = k;
+            input[ipos] = 0;
         }
     }
-
-    endwin();
-    return 0;
 }
