@@ -24,4 +24,9 @@ typedef struct __attribute__((packed)) {
 
 void getName(char* dest, char* src);
 
-#endif // PROTOCOL_HEADER_H
+void protocol_create_header(Header* header, const char* sendername, const char* targetname,
+                            uint8_t type);
+
+size_t msglen(const char* msg);
+
+#endif  // PROTOCOL_HEADER_H

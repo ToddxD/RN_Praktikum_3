@@ -26,23 +26,23 @@
 
 char ownName[32];
 
-void protocol_create_header(Header* header, const char* sendername, const char* targetname,
-                            uint8_t type) {
-    memset(header, 0, sizeof(Header));
-    setName(header->sendername, sendername);
-    setName(header->targetname, targetname);
-    header->type = type;
+void do_chat(const char* target, const char* msg) {
+    Header newHeader;
+    int offset = 0;
+    protocol_create_header(&newHeader, ownName, target, TYPE_CHAT);
+    
+    char message[sizeof(Header) + MSG_SIZE] = {0};
+    memcpy(message + offset, &newHeader, sizeof(Header));
+    offset += sizeof(Header);
+    strcpy(message + offset, msg); // TODO msg fragmentieren, wenn zu lang
+    offset += msglen(message + offset);
+    message[offset] = '\004';
+
+    uint64_t targetAdresseUndPort = getRouting(target);
+    push_send(targetAdresseUndPort, message, msglen(message));
 }
 
-size_t msglen(const char* msg) {
-    size_t len = 0;
-    while (msg[len] != '\004' && len < MSG_SIZE-1) {
-        len++;
-    }
-    return len+1;
-}
-
-void do_login(char* chat_name, int local_port, char* target_host, int target_port) {
+void do_login(const char* chat_name, const int local_port, const char* target_host, const int target_port) {
     printf("Sende login\n");
     Header newHeader;
     int offset = 0;
@@ -50,7 +50,7 @@ void do_login(char* chat_name, int local_port, char* target_host, int target_por
     char message[sizeof(Header) + MSG_SIZE] = {0};
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
-    getName(message + offset, chat_name);
+    getName(message + offset, chat_name); // TODO wie soll der Name eigentlich drin stehen?
     offset += NAME_LEN;
     struct in_addr addr;
     inet_aton(target_host, &addr);

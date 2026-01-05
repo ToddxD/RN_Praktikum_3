@@ -5,6 +5,7 @@
 
 #include "queue.h"
 #include "protocol_header.h"
+#include "protocol.h"
 
 /* ===================== Tab-Logik ===================== */
 
@@ -236,6 +237,7 @@ int start_ui() {
         if (ch == '\n') {
             if (pos > 0) {
                 add_own_message(&tabs, input);
+                do_chat(tabs.tabs[tabs.active].name, input);
                 render_tabs(tabwin, &tabs);
                 render_chat(chat, &tabs);
             }
