@@ -99,6 +99,9 @@ char* getChatName(uint64_t adressUndPort){
     return NULL;
 }
 
+int getSizeofRoutingTable(){
+    return sizeof(routingTable);
+}
 
 uint64_t getRouting(char* chatName){
     for(int i = 0; i < sizeof(routingTable)/80; i++){
@@ -159,7 +162,7 @@ void printRoutingTable(){
             printf("Entry %d:\n", i);
             printf(" Chat Name: %s\n", routingTable[i].chatName);
             printf(" Address: %u.%u.%u.%u\n", (uint8_t)(routingTable[i].adress >> 24), (uint8_t)(routingTable[i].adress >> 16), (uint8_t)(routingTable[i].adress >> 8), (uint8_t)(routingTable[i].adress));
-            printf(" Port: %u\n", routingTable[i].port);
+            printf(" Port: %u\n", (uint32_t)routingTable[i].port);
             printf(" Next Chat Name: %s\n", routingTable[i].nextChatName);
             printf(" Next Address: %u.%u.%u.%u\n", (uint8_t)(routingTable[i].nextAdress >> 24), (uint8_t)(routingTable[i].nextAdress >> 16), (uint8_t)(routingTable[i].nextAdress >> 8), (uint8_t)(routingTable[i].nextAdress));
             printf(" Next Port: %u\n", routingTable[i].nextPort);
