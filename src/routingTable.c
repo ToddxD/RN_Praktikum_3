@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "ui.h"
 
 routingTableEntry routingTable[5] = {0};
 int freeEntries = 99;
@@ -19,15 +20,24 @@ int freeEntries = 99;
 void initTable(char* ownName, int ownAdress, int ownPort) {
     memset(routingTable, 0, sizeof(routingTable));
     memcpy(routingTable[0].chatName, ownName, strlen(ownName) + 1);
-    routingTable[0].adress = ownAdress;
+
+    uint32_t adress = ((uint32_t)((ownAdress & 0xFF))) << 24 |
+                ((uint32_t)((ownAdress & 0xFF00))) << 8 |
+                ((uint32_t)((ownAdress & 0xFF0000))) >> 8 |
+                ((uint32_t)((ownAdress & 0xFF000000))) >> 24;
+
+    routingTable[0].adress = adress;
     routingTable[0].port = ownPort;
+    memcpy(routingTable[0].nextChatName, ownName, strlen(ownName) + 1);
+    routingTable[0].nextAdress = adress;
+    routingTable[0].nextPort = ownPort;
     routingTable[0].hopCount = 0;
 }
 
 int checkNameInTable(char* chatName) {
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
         if (strcmp(routingTable[i].chatName, chatName) == 0) {
-            return i;
+            return i+1;
         }
     }
     return 0;
@@ -69,6 +79,7 @@ void tableUpdate(uint8_t* message, int length) {
                         strcmp(routingTable[j].chatName, "") == 0) {
                         routingTable[j] = newEntry;
                         freeEntries--;
+                        push_ui("<Empfänger hat sich angemeldet!>", newEntry.chatName);
                         break;
                     }
                 }
@@ -76,25 +87,26 @@ void tableUpdate(uint8_t* message, int length) {
                 printf("Routing Table full, cannot add new entry for %s\n", newEntry.chatName);
                 continue;
             }
-        } else if (routingTable[index].hopCount >
-                   (uint32_t)(((workingArray[OFFSETHOPCOUNT] << 24) |
+        } else if (routingTable[index-1].hopCount >
+                   (uint32_t)((workingArray[OFFSETHOPCOUNT] << 24) |
                                (uint32_t)(workingArray[OFFSETHOPCOUNT + 1] << 16) |
                                (uint32_t)(workingArray[OFFSETHOPCOUNT + 2] << 8) |
-                               (uint32_t)(workingArray[OFFSETHOPCOUNT + 3])) +
-                              1)) {
-            memcpy(routingTable[index].nextChatName, workingArray + OFFSETNEXTCHATNAME, 32);
-            routingTable[index].nextAdress = (uint32_t)(workingArray[OFFSETNEXTADRESS] << 24) |
+                               (uint32_t)(workingArray[OFFSETHOPCOUNT + 3]))) {
+            memcpy(routingTable[index-1].nextChatName, workingArray + OFFSETNEXTCHATNAME, 32);
+            routingTable[index-1].nextAdress = (uint32_t)(workingArray[OFFSETNEXTADRESS] << 24) |
                                              (uint32_t)(workingArray[OFFSETNEXTADRESS + 1] << 16) |
                                              (uint32_t)(workingArray[OFFSETNEXTADRESS + 2] << 8) |
                                              (uint32_t)(workingArray[OFFSETNEXTADRESS + 3]);
-            routingTable[index].nextPort = (uint16_t)(workingArray[OFFSETNEXTPORT] << 8) |
+            routingTable[index-1].nextPort = (uint16_t)(workingArray[OFFSETNEXTPORT] << 8) |
                                            (uint16_t)(workingArray[OFFSETNEXTPORT + 1]);
-            routingTable[index].hopCount =
+            routingTable[index-1].hopCount =
                 (uint32_t)(((workingArray[OFFSETHOPCOUNT] << 24) |
                             (uint32_t)(workingArray[OFFSETHOPCOUNT + 1] << 16) |
                             (uint32_t)(workingArray[OFFSETHOPCOUNT + 2] << 8) |
                             (uint32_t)(workingArray[OFFSETHOPCOUNT + 3])) +
                            1);
+        } else {
+            continue;
         }
     }
 }
@@ -167,14 +179,14 @@ void tableToCharArray(uint8_t* ergebnis) {
         ergebnis[i * 80 + OFFSETPORT] = (uint8_t)(routingTable[i].port >> 8);
         ergebnis[i * 80 + OFFSETPORT + 1] = (uint8_t)(routingTable[i].port);
         for (int k = 0; k < 32; k++) {
-            ergebnis[OFFSETNEXTCHATNAME + k + i * 80] = (uint8_t)routingTable[i].nextChatName[k];
+            ergebnis[OFFSETNEXTCHATNAME + k + i * 80] = routingTable[0].nextChatName[k];
         }
-        ergebnis[i * 80 + OFFSETNEXTADRESS] = (uint8_t)(routingTable[i].nextAdress >> 24);
-        ergebnis[i * 80 + OFFSETNEXTADRESS + 1] = (uint8_t)(routingTable[i].nextAdress >> 16);
-        ergebnis[i * 80 + OFFSETNEXTADRESS + 2] = (uint8_t)(routingTable[i].nextAdress >> 8);
-        ergebnis[i * 80 + OFFSETNEXTADRESS + 3] = (uint8_t)(routingTable[i].nextAdress);
-        ergebnis[i * 80 + OFFSETNEXTPORT] = (uint8_t)(routingTable[i].nextPort >> 8);
-        ergebnis[i * 80 + OFFSETNEXTPORT + 1] = (uint8_t)(routingTable[i].nextPort);
+        ergebnis[i * 80 + OFFSETNEXTADRESS] = (uint8_t)(routingTable[0].nextAdress >> 24);
+        ergebnis[i * 80 + OFFSETNEXTADRESS + 1] = (uint8_t)(routingTable[0].nextAdress >> 16);
+        ergebnis[i * 80 + OFFSETNEXTADRESS + 2] = (uint8_t)(routingTable[0].nextAdress >> 8);
+        ergebnis[i * 80 + OFFSETNEXTADRESS + 3] = (uint8_t)(routingTable[0].nextAdress);
+        ergebnis[i * 80 + OFFSETNEXTPORT] = (uint8_t)(routingTable[0].nextPort >> 8);
+        ergebnis[i * 80 + OFFSETNEXTPORT + 1] = (uint8_t)(routingTable[0].nextPort);
         ergebnis[i * 80 + OFFSETHOPCOUNT] = (uint8_t)(routingTable[i].hopCount >> 24);
         ergebnis[i * 80 + OFFSETHOPCOUNT + 1] = (uint8_t)(routingTable[i].hopCount >> 16);
         ergebnis[i * 80 + OFFSETHOPCOUNT + 2] = (uint8_t)(routingTable[i].hopCount >> 8);

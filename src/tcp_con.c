@@ -15,6 +15,7 @@
 
 int CLIENT_connect_to(const char* ip_str, int port) {
     struct sockaddr_in socket_addr;
+    sleep(1);
     memset(&socket_addr, 0, sizeof(socket_addr));
     socket_addr.sin_family = AF_INET;
     socket_addr.sin_port = htons(port);

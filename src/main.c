@@ -231,6 +231,8 @@ int main(int argc, char** argv) {
 
     strcpy(ownName, chat_name);
 
+    initTable(chat_name, inet_addr(local_host), local_port);
+
     start_sender(); 
     start_server(local_port, chat_name);
 

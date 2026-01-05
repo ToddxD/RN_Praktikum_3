@@ -51,7 +51,7 @@ int deleteFromTable(char* chatName);
 
 void tableToCharArray(uint8_t* ergebnis);
 
-void printTable();
+void printRoutingTable();
 
 int getRoutingTableSize();
 

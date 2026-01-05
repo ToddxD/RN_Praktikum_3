@@ -30,11 +30,11 @@ void do_chat(const char* target, const char* msg) {
     Header newHeader;
     int offset = 0;
     protocol_create_header(&newHeader, ownName, target, TYPE_CHAT);
-    
+
     char message[MSG_SIZE] = {0};
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
-    strcpy(message + offset, msg); // TODO msg fragmentieren, wenn zu lang
+    strcpy(message + offset, msg);  // TODO msg fragmentieren, wenn zu lang
     offset += strlen(msg);
     message[offset] = EOT;
 
@@ -42,8 +42,9 @@ void do_chat(const char* target, const char* msg) {
     push_send(targetAdresseUndPort, message, msglen(message));
 }
 
-void do_login(const char* chat_name, const char* local_host, const int local_port, const char* target_host, const int target_port) {
-    //printf("Sende login\n");
+void do_login(const char* chat_name, const char* local_host, const int local_port,
+              const char* target_host, const int target_port) {
+    // printf("Sende login\n");
     Header newHeader;
     int offset = 0;
     protocol_create_header(&newHeader, ownName, "???", TYPE_LOGIN);
@@ -51,28 +52,28 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
     memset(message, 0, sizeof(message));
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
-    getName(message + offset, chat_name); // TODO wie soll der Name eigentlich drin stehen?
+    getName(message + offset, chat_name);  // TODO wie soll der Name eigentlich drin stehen?
     offset += NAME_LEN;
 
     struct in_addr local_addr;
     inet_aton(local_host, &local_addr);
-    //printf("Target IP: %d\n", ((uint32_t)addr.s_addr));
+    // printf("Target IP: %d\n", ((uint32_t)addr.s_addr));
     memcpy(message + offset, &local_addr.s_addr, 4);
     offset += 4;
-    //memcpy(message + offset, &target_port, 2);
+    // memcpy(message + offset, &target_port, 2);
     message[offset] = (uint8_t)((local_port >> 8) & 0xFF);
     message[offset + 1] = (uint8_t)(local_port & 0xFF);
     offset += 2;
     message[offset] = EOT;
 
-
     struct in_addr target_addr;
     inet_aton(target_host, &target_addr);
-    push_send(((uint64_t)target_addr.s_addr << 32) | (uint64_t)target_port, message, msglen(message));
+    push_send(((uint64_t)target_addr.s_addr << 32) | (uint64_t)target_port, message,
+              msglen(message));
 }
 
 void forward(const char* target, Header header, const char* msg) {
-    printf("Forwarding message to %s\n", target);
+    //printf("Forwarding message to %s\n", target);
     uint64_t targetAdresseUndPort = getRouting(target);
     if (targetAdresseUndPort == 0) {
         printf("No route to target %s\n", target);
@@ -90,7 +91,7 @@ void forward(const char* target, Header header, const char* msg) {
 }
 
 void msg_login(const char* sender, const char* content) {
-    //printf("Handling login message\n");
+    // printf("Handling login message\n");
     uint8_t contentNew[OFFSETMESSAGECOUNT];
     memset(contentNew, 0, sizeof(contentNew));
     memcpy(contentNew, content, OFFSETNEXTCHATNAME);
@@ -102,8 +103,6 @@ void msg_login(const char* sender, const char* content) {
     tableToCharArray(ergebnis);
     // sender zur routing tabelle hinzufügen
     // aktualisierte ROUTE message versenden
-
-    push_ui("<Empfänger hat sich angemeldet!>", sender);
 
     user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
     memset(hopsOneAway, 0, sizeof(hopsOneAway));
@@ -126,7 +125,7 @@ void msg_login(const char* sender, const char* content) {
 void msg_chat(const char* sender, /*const*/ char* content) {
     // printf("Chat from %s: %s\n", sender, content);
     //  auf UI anzeigen
-    content[msglen(content)-1] = 0;  // EOT entfernen für UI
+    content[msglen(content) - 1] = 0;  // EOT entfernen für UI
     push_ui(content, sender);
 }
 
@@ -138,7 +137,8 @@ void msg_logout(const char* sender) {
 
 void msg_route(const char* sender, const char* content, int size) {
     tableUpdate((uint8_t*)content, size);
-    printf("Handling route message\n");
+
+    // printf("Handling route message\n");
     uint8_t message[getRoutingTableSize()];
     memset(message, 0, sizeof(message));
     tableToCharArray(message);
@@ -153,18 +153,19 @@ void msg_route(const char* sender, const char* content, int size) {
         char fullMessage[sizeof(Header) + sizeof(message)];
         memcpy(fullMessage, &header, sizeof(Header));
         memcpy(fullMessage + sizeof(Header), message, sizeof(message));
-        if(strcmp(hopsOneAway[index].chatName, sender) == 0){
-            printf("Not sending ROUTE to sender %s\n", sender);
+        if (strcmp(hopsOneAway[index].chatName, sender) == 0) {
+            //printf("Not sending ROUTE to sender %s\n", sender);
             index++;
             continue;
         }
-        push_send((getRouting(hopsOneAway[index].chatName)),
-                  fullMessage, sizeof(fullMessage));
+        push_send((getRouting(hopsOneAway[index].chatName)), fullMessage, sizeof(fullMessage));
         index++;
     }
     // hop counts erhöhen
     // eigene routing tabelle mit neuen Daten aktualisieren
     // aktualisierte ROUTE message versenden
+
+    // printRoutingTable();
 }
 
 void msg_heart(const char* sender) {
