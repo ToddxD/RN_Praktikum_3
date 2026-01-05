@@ -138,7 +138,9 @@ uint64_t getRouting(char* chatName) {
     }
     return -1;
 }
-
+int getSizeofRoutingTable(){
+    return sizeof(routingTable);
+}
 int deleteFromTable(char* chatName) {
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
         if (strcmp(routingTable[i].chatName, chatName) == 0) {

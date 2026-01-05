@@ -53,7 +53,7 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
     offset += sizeof(Header);
     getName(message + offset, chat_name); // TODO wie soll der Name eigentlich drin stehen?
     offset += NAME_LEN;
-    
+
     struct in_addr local_addr;
     inet_aton(local_host, &local_addr);
     //printf("Target IP: %d\n", ((uint32_t)addr.s_addr));
@@ -65,7 +65,7 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
     offset += 2;
     message[offset] = EOT;
 
-    
+
     struct in_addr target_addr;
     inet_aton(target_host, &target_addr);
     push_send(((uint64_t)target_addr.s_addr << 32) | (uint64_t)target_port, message, msglen(message));
@@ -117,7 +117,7 @@ void msg_login(const char* sender, const char* content) {
         char message[sizeof(Header) + sizeof(ergebnis)];
         memcpy(message, &header, sizeof(Header));
         memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
-        
+
         push_send(getRouting(hopsOneAway[index].chatName), message, sizeof(message));
         index++;
     }
@@ -136,9 +136,32 @@ void msg_logout(const char* sender) {
     push_ui("<Empfänger hat sich abgemeldet!>", sender);
 }
 
-void msg_route(const char* sender, const char* content) {
+void msg_route(const char* sender, const char* content, int size) {
+    tableUpdate((uint8_t*)content, size);
     printf("Handling route message\n");
-    // content zu routing tabelle parsen
+    uint8_t message[getRoutingTableSize()];
+    memset(message, 0, sizeof(message));
+    tableToCharArray(message);
+    user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
+    memset(hopsOneAway, 0, sizeof(hopsOneAway));
+    getHopsOneAway(hopsOneAway);
+    int index = 0;
+    while (hopsOneAway[index].chatName[0] != '\0' &&
+           index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
+        Header header;
+        protocol_create_header(&header, sender, hopsOneAway[index].chatName, TYPE_ROUTE);
+        char fullMessage[sizeof(Header) + sizeof(message)];
+        memcpy(fullMessage, &header, sizeof(Header));
+        memcpy(fullMessage + sizeof(Header), message, sizeof(message));
+        if(strcmp(hopsOneAway[index].chatName, sender) == 0){
+            printf("Not sending ROUTE to sender %s\n", sender);
+            index++;
+            continue;
+        }
+        push_send((getRouting(hopsOneAway[index].chatName)),
+                  fullMessage, sizeof(fullMessage));
+        index++;
+    }
     // hop counts erhöhen
     // eigene routing tabelle mit neuen Daten aktualisieren
     // aktualisierte ROUTE message versenden
@@ -199,7 +222,7 @@ void protocol_handle_msg(const int connection) {
                 msg_logout(sender);
                 break;
             case TYPE_ROUTE:
-                msg_route(sender, content);
+                msg_route(sender, content, count - sizeof(Header));
                 break;
             case TYPE_HEART:
                 msg_heart(sender);
