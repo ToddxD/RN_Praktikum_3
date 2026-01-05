@@ -85,10 +85,10 @@ void msg_login(const char* sender, const char* content) {
     printf("Handling login message\n");
     uint8_t contentNew[OFFSETMESSAGECOUNT];
     memset(contentNew, 0, sizeof(contentNew));
-    memcpy(contentNew, content, OFFSETMESSAGECOUNT);
-    memcpy(contentNew + OFFSETNEXTCHATNAME, content + OFFSETNEXTCHATNAME, content);
+    memcpy(contentNew, content, sizeof(content));
+    memcpy(contentNew + OFFSETNEXTCHATNAME, content, sizeof(content));
     contentNew[OFFSETHOPCOUNT] = 0;  // hop count auf 0 setzen
-    tableUpdate(contentNew, sizeof(content));
+    tableUpdate(contentNew, sizeof(contentNew));
     uint8_t ergebnis[getRoutingTableSize()];
     memset(ergebnis, 0, sizeof(ergebnis));
     tableToCharArray(ergebnis);
@@ -109,9 +109,16 @@ void msg_login(const char* sender, const char* content) {
         char message[sizeof(Header) + sizeof(ergebnis)];
         memcpy(message, &header, sizeof(Header));
         memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
+        if(strcmp(hopsOneAway[index].chatName, sender) == 0){
+            printf("Not sending ROUTE to sender %s\n", sender);
+            index++;
+            continue;
+        }
         push_send(((uint64_t)hopsOneAway[index].adress) << 32 | (uint64_t)hopsOneAway[index].port,
                   message, sizeof(message));
     }
+
+    printRoutingTable();
 }
 
 void msg_chat(const char* sender, /*const*/ char* content) {
