@@ -85,17 +85,15 @@ void* sender_loop(void* arg) {
     running = true;
 
     while (running) {
-        char msg[sizeof(Header) + MSG_SIZE];
+        char msg[MSG_SIZE];
         uint64_t dest_addr;
 
         int len = pop_send(&dest_addr, msg);
         if (len > 0) {
-            printf("Sending message to %lu\n", dest_addr);
             int fd = get_con(dest_addr);
             if (send_tcp(fd, msg, len) < 0) {
                 printf("Error sending message to %lu\n", dest_addr);
             }
-
             // TODO close con
         }
     }
