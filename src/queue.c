@@ -66,7 +66,7 @@ int pop_send(uint64_t* dest_addr, char* msg) {
     }
 
     QueueMessage_SEND* to_pop = send_queue.head;
-    strcpy(msg, to_pop->msg);
+    memcpy(msg, to_pop->msg, to_pop->msg_len);
     *dest_addr = to_pop->dest_addr;
     send_queue.head = to_pop->next;
     free(to_pop);
@@ -75,13 +75,14 @@ int pop_send(uint64_t* dest_addr, char* msg) {
     return 0;
 }
 
-int push_send(const uint64_t dest_addr, const char* msg) {
+int push_send(const uint64_t dest_addr, const char* msg, size_t msg_len) {
     pthread_mutex_lock(&send_queue.queue_mutex);
     if (send_queue.head == NULL) {
         printf("queueDebug1\n");
         send_queue.head = malloc(sizeof(QueueMessage_SEND));
         send_queue.head->dest_addr = dest_addr;
-        strcpy(send_queue.head->msg, msg);
+        memcpy(send_queue.head->msg, msg, msg_len);
+        send_queue.head->msg_len = msg_len;
         send_queue.head->next = NULL;
     } else {
         printf("queueDebug2\n");
@@ -97,7 +98,8 @@ int push_send(const uint64_t dest_addr, const char* msg) {
         }
         QueueMessage_SEND* new_msg = malloc(sizeof(QueueMessage_SEND));
         new_msg->dest_addr = dest_addr;
-        strcpy(new_msg->msg, msg);
+        memcpy(new_msg->msg, msg, msg_len);
+        new_msg->msg_len = msg_len;
         new_msg->next = NULL;
         current->next = new_msg;
     }

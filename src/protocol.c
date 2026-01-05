@@ -24,14 +24,22 @@
 #include "routingTable.h"
 #include "tcp_con.h"
 
-char ownName[32];  // TODO Name dynamisch vergeben
+char ownName[32];
 
 void protocol_create_header(Header* header, const char* sendername, const char* targetname,
                             uint8_t type) {
     memset(header, 0, sizeof(Header));
-    memcpy(header->sendername, sendername, 32);
-    memcpy(header->targetname, targetname, 32);
+    setName(header->sendername, sendername);
+    setName(header->targetname, targetname);
     header->type = type;
+}
+
+size_t msglen(const char* msg) {
+    size_t len = 0;
+    while (msg[len] != '\004' && len < MSG_SIZE-1) {
+        len++;
+    }
+    return len+1;
 }
 
 void do_login(char* chat_name, int local_port, char* target_host, int target_port) {
@@ -39,11 +47,11 @@ void do_login(char* chat_name, int local_port, char* target_host, int target_por
     Header newHeader;
     int offset = 0;
     protocol_create_header(&newHeader, ownName, "???", TYPE_LOGIN);
-    char message[sizeof(Header) + MSG_SIZE];
+    char message[sizeof(Header) + MSG_SIZE] = {0};
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
-    memcpy(message + offset, chat_name, strlen(chat_name) + 1);
-    offset += strlen(chat_name) + 1;
+    getName(message + offset, chat_name);
+    offset += NAME_LEN;
     struct in_addr addr;
     inet_aton(target_host, &addr);
     memcpy(message + offset, &addr.s_addr, 4);
@@ -51,9 +59,8 @@ void do_login(char* chat_name, int local_port, char* target_host, int target_por
     memcpy(message + offset, &target_port, 2);
     offset += 2;
     message[offset] = '\004';
-    message[offset + 1] = 0;
 
-    push_send(((uint64_t)addr.s_addr << 32) | (uint64_t)target_port, message);
+    push_send(((uint64_t)addr.s_addr << 32) | (uint64_t)target_port, message, msglen(message));
 }
 
 void forward(const char* target, Header header, const char* msg) {
@@ -63,10 +70,10 @@ void forward(const char* target, Header header, const char* msg) {
         printf("No route to target %s\n", target);
         return;
     }
-    char message[sizeof(Header) + sizeof(msg)];
+    char message[sizeof(Header) + msglen(msg)];
     memcpy(message, &header, sizeof(Header));
-    memcpy(message + sizeof(Header), msg, sizeof(msg));
-    push_send(targetAdresseUndPort, message);
+    memcpy(message + sizeof(Header), msg, msglen(msg));
+    push_send(targetAdresseUndPort, message, sizeof(message));
 
     // TODO \004 wahrscheinlich noch an msg anhängen
     // target in routing tabelle suchen
@@ -103,13 +110,14 @@ void msg_login(const char* sender, const char* content) {
         memcpy(message, &header, sizeof(Header));
         memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
         push_send(((uint64_t)hopsOneAway[index].adress) << 32 | (uint64_t)hopsOneAway[index].port,
-                  message);
+                  message, sizeof(message));
     }
 }
 
-void msg_chat(const char* sender, const char* content) {
+void msg_chat(const char* sender, /*const*/ char* content) {
     // printf("Chat from %s: %s\n", sender, content);
     //  auf UI anzeigen
+    content[msglen(content)-1] = 0;  // EOT entfernen für UI
     push_ui(content, sender);
 }
 
@@ -169,7 +177,7 @@ void protocol_handle_msg(const int connection) {
     char* content = read_buf + sizeof(Header);
 
     printf("Nachricht bekommen, Type: %d, From: %s, To: %s\n", header.type, sender, target);
-    if (strcmp(target, ownName) != 0) {  // TODO Name dynamisch vergeben
+    if (header.type != TYPE_LOGIN && strcmp(target, ownName) != 0) {
         forward(target, header, content);
     } else {
         switch (header.type) {

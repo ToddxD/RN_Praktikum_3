@@ -15,6 +15,7 @@ typedef struct QueueMessage_UI {
 typedef struct QueueMessage_SEND {
     uint64_t dest_addr;
     char msg[sizeof(Header) + MSG_SIZE];
+    size_t msg_len;
     struct QueueMessage_SEND* next;
 } QueueMessage_SEND;
 
@@ -34,6 +35,6 @@ int push_ui(const char* text_buf, const char* name_buf);
 
 int pop_send(uint64_t* dest_addr, char* msg);
 
-int push_send(const uint64_t dest_addr, const char* msg);
+int push_send(const uint64_t dest_addr, const char* msg, size_t msg_len);
 
 #endif  // QUEUE_H
