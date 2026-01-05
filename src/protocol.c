@@ -55,9 +55,12 @@ void do_login(const char* chat_name, const int local_port, const char* target_ho
     offset += NAME_LEN;
     struct in_addr addr;
     inet_aton(target_host, &addr);
+    printf("Target IP: %d\n", ((uint32_t)addr.s_addr));
     memcpy(message + offset, &addr.s_addr, 4);
     offset += 4;
-    memcpy(message + offset, &target_port, 2);
+    //memcpy(message + offset, &target_port, 2);
+    message[offset] = (uint8_t)((local_port >> 8) & 0xFF);
+    message[offset + 1] = (uint8_t)(local_port & 0xFF);
     offset += 2;
     message[offset] = '\004';
 
@@ -86,8 +89,8 @@ void msg_login(const char* sender, const char* content) {
     printf("Handling login message\n");
     uint8_t contentNew[OFFSETMESSAGECOUNT];
     memset(contentNew, 0, sizeof(contentNew));
-    memcpy(contentNew, content, sizeof(content));
-    memcpy(contentNew + OFFSETNEXTCHATNAME, content, sizeof(content));
+    memcpy(contentNew, content, OFFSETNEXTCHATNAME);
+    memcpy(contentNew + OFFSETNEXTCHATNAME, content, OFFSETNEXTCHATNAME);
     contentNew[OFFSETHOPCOUNT] = 0;  // hop count auf 0 setzen
     tableUpdate(contentNew, sizeof(contentNew));
     uint8_t ergebnis[getRoutingTableSize()];
