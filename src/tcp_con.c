@@ -68,6 +68,7 @@ int send_tcp(int socket_fd, char* str, size_t size) {
 
     while (total_sent < size) {
         size_t n = write(socket_fd, buf + total_sent, MIN(BUF_SIZE, size - total_sent));
+        printf("send_tcp: versucht %zu bytes zu senden\n", MIN(BUF_SIZE, size - total_sent));
         if (n < 0) {
             fprintf(stderr, "[TCP] error sending file data: %s\n", strerror(errno));
             free(buf);

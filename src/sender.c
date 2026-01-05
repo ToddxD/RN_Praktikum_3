@@ -21,21 +21,20 @@
 #include <unistd.h>
 
 #include "protocol.h"
-#include "tcp_con.h"
 #include "queue.h"
+#include "tcp_con.h"
 
 static bool running = false;
 
 static Connection* con_head = NULL;
 
 int get_con(uint64_t addr_port) {
-    if (con_head == NULL) {  
+    if (con_head == NULL) {
         con_head = malloc(sizeof(Connection));
         con_head->addr_port = addr_port;
-        con_head->socket_fd = CLIENT_connect_to(
-            inet_ntoa((struct in_addr){.s_addr = (uint32_t)(addr_port >> 32)}),
-            (uint16_t)(addr_port & 0xFFFFFFFF)
-        );
+        con_head->socket_fd =
+            CLIENT_connect_to(inet_ntoa((struct in_addr){.s_addr = (uint32_t)(addr_port >> 32)}),
+                              (uint16_t)(addr_port & 0xFFFFFFFF));
         con_head->next_item = NULL;
         return con_head->socket_fd;
     } else {
@@ -49,19 +48,17 @@ int get_con(uint64_t addr_port) {
             if (current->addr_port == addr_port) {
                 return current->socket_fd;
             }
-        } 
+        }
 
         Connection* new_con = malloc(sizeof(Connection));
         new_con->addr_port = addr_port;
-        new_con->socket_fd = CLIENT_connect_to(
-            inet_ntoa((struct in_addr){.s_addr = (uint32_t)(addr_port >> 32)}),
-            (uint16_t)(addr_port & 0xFFFFFFFF)
-        );
+        new_con->socket_fd =
+            CLIENT_connect_to(inet_ntoa((struct in_addr){.s_addr = (uint32_t)(addr_port >> 32)}),
+                              (uint16_t)(addr_port & 0xFFFFFFFF));
         new_con->next_item = NULL;
         current->next_item = new_con;
         return new_con->socket_fd;
     }
-
 }
 
 void remove_con(uint64_t addr_port) {
@@ -91,13 +88,14 @@ void* sender_loop(void* arg) {
         char msg[sizeof(Header) + MSG_SIZE];
         uint64_t dest_addr;
 
-        if (pop_send(&dest_addr, msg) == 0) {
+        int len = pop_send(&dest_addr, msg);
+        if (len > 0) {
             printf("Sending message to %lu\n", dest_addr);
             int fd = get_con(dest_addr);
-            if(send_tcp(fd, msg, sizeof(Header) + MSG_SIZE)< 0) {
+            if (send_tcp(fd, msg, len) < 0) {
                 printf("Error sending message to %lu\n", dest_addr);
             }
-            
+
             // TODO close con
         }
     }

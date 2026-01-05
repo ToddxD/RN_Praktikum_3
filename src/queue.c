@@ -68,11 +68,12 @@ int pop_send(uint64_t* dest_addr, char* msg) {
     QueueMessage_SEND* to_pop = send_queue.head;
     memcpy(msg, to_pop->msg, to_pop->msg_len);
     *dest_addr = to_pop->dest_addr;
+    int size = to_pop->msg_len;
     send_queue.head = to_pop->next;
     free(to_pop);
 
     pthread_mutex_unlock(&send_queue.queue_mutex);
-    return 0;
+    return size;
 }
 
 int push_send(const uint64_t dest_addr, const char* msg, size_t msg_len) {

@@ -2,6 +2,7 @@
 #define PROTOCOL_HEADER_H
 
 #include <stdint.h>
+#include <string.h>
 
 #define NAME_LEN 32
 

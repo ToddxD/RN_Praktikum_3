@@ -7,14 +7,14 @@
 #define MAX_QUEUE_SIZE 100
 
 typedef struct QueueMessage_UI {    
-    char text[MSG_SIZE];
+    char text[MSG_SIZE - sizeof(Header)];
     char name[32];
     struct QueueMessage_UI* next;
 } QueueMessage_UI;
 
 typedef struct QueueMessage_SEND {
     uint64_t dest_addr;
-    char msg[sizeof(Header) + MSG_SIZE];
+    char msg[MSG_SIZE];
     size_t msg_len;
     struct QueueMessage_SEND* next;
 } QueueMessage_SEND;

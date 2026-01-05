@@ -47,7 +47,8 @@ void do_login(const char* chat_name, const int local_port, const char* target_ho
     Header newHeader;
     int offset = 0;
     protocol_create_header(&newHeader, ownName, "???", TYPE_LOGIN);
-    char message[sizeof(Header) + MSG_SIZE] = {0};
+    char message[MSG_SIZE] = {0};
+    memset(message, 0, sizeof(message));
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
     getName(message + offset, chat_name); // TODO wie soll der Name eigentlich drin stehen?
