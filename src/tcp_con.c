@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "protocol_header.h"
 
 int CLIENT_connect_to(const char* ip_str, int port) {
     struct sockaddr_in socket_addr;
@@ -98,11 +99,13 @@ int read_tcp(int socket_fd, char** read_buf) {
             return -1;
         }
 
-        char* eot = memchr(*read_buf, '\004', BUF_SIZE);  // EOT finden und abbrechen
-        if (eot) {
-            read_count = (eot - *read_buf);
-            //*eot = 0;
-            break;
+        if (read_count == 0) {
+            char* eot = memchr(*read_buf + sizeof(Header), '\004', BUF_SIZE);  // EOT finden und abbrechen
+            if (eot) {
+                read_count = (eot - *read_buf);
+                //*eot = 0;
+                break;
+            }
         }
     }
     return read_count;
