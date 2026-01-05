@@ -79,14 +79,12 @@ int pop_send(uint64_t* dest_addr, char* msg) {
 int push_send(const uint64_t dest_addr, const char* msg, size_t msg_len) {
     pthread_mutex_lock(&send_queue.queue_mutex);
     if (send_queue.head == NULL) {
-        printf("queueDebug1\n");
         send_queue.head = malloc(sizeof(QueueMessage_SEND));
         send_queue.head->dest_addr = dest_addr;
         memcpy(send_queue.head->msg, msg, msg_len);
         send_queue.head->msg_len = msg_len;
         send_queue.head->next = NULL;
     } else {
-        printf("queueDebug2\n");
         int size = 1;
         QueueMessage_SEND* current = send_queue.head;
         while (current->next != NULL) {

@@ -22,7 +22,7 @@ int CLIENT_connect_to(const char* ip_str, int port) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
     if (connect(sock, (struct sockaddr*)&socket_addr, sizeof(socket_addr)) < 0) {
-        fprintf(stderr, "[TCP] error connecting to %s:%d: %s\n", ip_str, port,strerror(errno));
+        fprintf(stderr, "[TCP] error connecting to %s:%d: %s\n", ip_str, port, strerror(errno));
         return -1;
     }
 
@@ -41,7 +41,8 @@ int SERVER_listen_on(const char* ip_str, int port) {
     int one = 1;
     const int* val = &one;
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, val, sizeof(one)) < 0) {
-        fprintf(stderr, "[TCP] error setsockopt SO_REUSEADDR for%s:%d: %s\n", ip_str, port, strerror(errno));
+        fprintf(stderr, "[TCP] error setsockopt SO_REUSEADDR for%s:%d: %s\n", ip_str, port,
+                strerror(errno));
         return -1;
     }
 
@@ -64,11 +65,12 @@ int send_tcp(int socket_fd, char* str, size_t size) {
     size += 1;
     char* buf = malloc(size);
     memcpy(buf, str, size - 1);
-    buf[size - 1] = EOT;  // EOT anhängen
+    if (buf[size - 1] != EOT) {
+        buf[size - 1] = EOT;  // EOT anhängen
+    }
 
     while (total_sent < size) {
         size_t n = write(socket_fd, buf + total_sent, MIN(BUF_SIZE, size - total_sent));
-        printf("send_tcp: versucht %zu bytes zu senden\n", MIN(BUF_SIZE, size - total_sent));
         if (n < 0) {
             fprintf(stderr, "[TCP] error sending file data: %s\n", strerror(errno));
             free(buf);
