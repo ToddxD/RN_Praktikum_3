@@ -192,7 +192,7 @@ int main(int argc, char** argv) {
 
     strcpy(ownName, chat_name);
 
-    start_sender();
+    start_sender(); 
     start_server(local_port, chat_name);
 
     if (target_host[0] != '\0') {
