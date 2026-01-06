@@ -11,11 +11,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include "protocol_header.h"
 
 int CLIENT_connect_to(const char* ip_str, int port) {
     struct sockaddr_in socket_addr;
-    sleep(1);
     memset(&socket_addr, 0, sizeof(socket_addr));
     socket_addr.sin_family = AF_INET;
     socket_addr.sin_port = htons(port);
@@ -85,7 +85,7 @@ int send_tcp(int socket_fd, char* str, size_t size) {
 }
 
 int read_tcp(int socket_fd, char** read_buf) {
-    *read_buf = malloc(BUF_SIZE * sizeof(char));
+    *read_buf = calloc(BUF_SIZE, sizeof(char));
     int read_count = 0;
 
     for (int i = 0; i < MAX_READ; i++) {
@@ -93,20 +93,17 @@ int read_tcp(int socket_fd, char** read_buf) {
             *read_buf = realloc(*read_buf, BUF_SIZE * (i + 1) * sizeof(char));
         }
 
-        if (read_count += read(socket_fd, *read_buf + (i * BUF_SIZE), BUF_SIZE) < 0) {
+        int c = read(socket_fd, *read_buf + (i * BUF_SIZE), BUF_SIZE);
+        read_count += c;
+        if (c < 0) {
             fprintf(stderr, "[TCP] error reading from socket: %s\n", strerror(errno));
             free(read_buf);
             read_buf = NULL;
             return -1;
         }
 
-        if (read_count == 0) {
-            char* eot = memchr(*read_buf + sizeof(Header), '\004', BUF_SIZE);  // EOT finden und abbrechen
-            if (eot) {
-                read_count = (eot - *read_buf);
-                //*eot = 0;
-                break;
-            }
+        if (c == 0) {
+            break;
         }
     }
     return read_count;

@@ -27,16 +27,12 @@
 
 static bool running = false;
 static int port = 0;
+static char* local_address = NULL;
 
 void* server_loop(void* arg) {
     running = true;
 
-    char hostname[256];
-    gethostname(hostname, sizeof(hostname));
-    struct hostent* host = gethostbyname(hostname);
-    struct in_addr* addr = (struct in_addr*)host->h_addr_list[0];
-
-    int server_socket = SERVER_listen_on(inet_ntoa(*addr), port);
+    int server_socket = SERVER_listen_on(local_address, port);
 
     int epoll = epoll_create1(0);
     if (epoll < 0) {
@@ -92,9 +88,10 @@ void* server_loop(void* arg) {
     return NULL;
 }
 
-void start_server(int _port, char* chat_name) {
+void start_server(char* _local_address, int _port, char* chat_name) {
     pthread_t thread1;
     port = _port;
+    local_address = _local_address;
 
     pthread_create(&thread1, NULL, server_loop, NULL);
 }

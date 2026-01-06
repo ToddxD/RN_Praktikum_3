@@ -4,7 +4,7 @@
 
 void getName(char* dest, char* src) {
     int count = NAME_LEN;
-    while (*src == 0) {
+    for (int i = 0; i < NAME_LEN && *src == 0; i++) {
         src++;
         count--;
     }

@@ -23,6 +23,7 @@
 #include "queue.h"
 #include "routingTable.h"
 #include "tcp_con.h"
+#include "heartBeat.h"
 
 char ownName[32];
 
@@ -39,7 +40,7 @@ void do_chat(const char* target, const char* msg) {
     message[offset] = EOT;
 
     uint64_t targetAdresseUndPort = getRouting(target);
-    push_send(targetAdresseUndPort, message, msglen(message));
+    push_send(SINGLE, targetAdresseUndPort, message, msglen(message)); // TODO SINGLE zu UP/DOWN, wenn fragmentiert
 }
 
 void do_login(const char* chat_name, const char* local_host, const int local_port,
@@ -68,21 +69,77 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
 
     struct in_addr target_addr;
     inet_aton(target_host, &target_addr);
-    push_send(((uint64_t)target_addr.s_addr << 32) | (uint64_t)target_port, message,
+    push_send(SINGLE, ((uint64_t)target_addr.s_addr << 32) | (uint64_t)target_port, message,
               msglen(message));
 }
 
-void forward(const char* target, Header header, const char* msg) {
+// Liste -- kann ggf. verallgemeinert werden -----------------------------------
+struct list{
+    char chatName[32];
+    struct list* next;
+} *list_head;
+
+// @return 1, wenn schon vorhanden, sonst 0
+int add_list(const char* chatName) {
+    if (list_head == NULL) {
+        list_head = malloc(sizeof(struct list));
+        strcpy(list_head->chatName, chatName);
+        list_head->next = NULL;
+    } else {
+        struct list* current = list_head;
+        if (strcmp(current->chatName, chatName) == 0) {
+            return 1;
+        }
+
+        while (current->next != NULL) {
+            current = current->next;
+            if (strcmp(current->chatName, chatName) == 0) {
+                return 1;
+            }
+        }
+        current->next = malloc(sizeof(struct list));
+        strcpy(current->next->chatName, chatName);
+        current->next->next = NULL;
+    }
+    return 0;
+}
+
+void remove_list(const char* chatName) {
+    struct list* current = list_head;
+    struct list* prev = NULL;
+
+    while (current != NULL) {
+        if (strcmp(current->chatName, chatName) == 0) {
+            if (prev == NULL) {
+                list_head = current->next;
+            } else {
+                prev->next = current->next;
+            }
+            free(current);
+            return;
+        }
+        prev = current;
+        current = current->next;
+    }
+}
+// -------------------------------------------------------------------
+
+void forward(const char* target, const char* msg) {
     //printf("Forwarding message to %s\n", target);
     uint64_t targetAdresseUndPort = getRouting(target);
     if (targetAdresseUndPort == 0) {
         printf("No route to target %s\n", target);
         return;
     }
-    char message[sizeof(Header) + msglen(msg)];
-    memcpy(message, &header, sizeof(Header));
-    memcpy(message + sizeof(Header), msg, msglen(msg));
-    push_send(targetAdresseUndPort, message, sizeof(message));
+
+    if (!add_list(target)) {
+        push_send(UP, targetAdresseUndPort, msg, msglen(msg));
+    } else if (memchr(msg, '\004', msglen(msg)) == NULL) {
+        push_send(KEEP, targetAdresseUndPort, msg, msglen(msg));
+    } else {
+        push_send(DOWN, targetAdresseUndPort, msg, msglen(msg));
+        remove_list(target);
+    }
 
     // TODO \004 wahrscheinlich noch an msg anhängen
     // target in routing tabelle suchen
@@ -117,7 +174,7 @@ void msg_login(const char* sender, const char* content) {
         memcpy(message, &header, sizeof(Header));
         memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
 
-        push_send(getRouting(hopsOneAway[index].chatName), message, sizeof(message));
+        push_send(SINGLE, getRouting(hopsOneAway[index].chatName), message, sizeof(message));
         index++;
     }
 }
@@ -130,7 +187,6 @@ void msg_chat(const char* sender, /*const*/ char* content) {
 }
 
 void msg_logout(const char* sender) {
-    printf("Handling logout message\n");
     // sender aus routing tabelle entfernen (disconnect)
     push_ui("<Empfänger hat sich abgemeldet!>", sender);
 }
@@ -158,7 +214,7 @@ void msg_route(const char* sender, const char* content, int size) {
             index++;
             continue;
         }
-        push_send((getRouting(hopsOneAway[index].chatName)), fullMessage, sizeof(fullMessage));
+        push_send(SINGLE, (getRouting(hopsOneAway[index].chatName)), fullMessage, sizeof(fullMessage));
         index++;
     }
     // hop counts erhöhen
@@ -170,12 +226,13 @@ void msg_route(const char* sender, const char* content, int size) {
 
 void msg_heart(const char* sender) {
     printf("Handling heart message\n");
-    // HEARTRESPONSE an sender senden
+    Header newHeader;
+    protocol_create_header(&newHeader, ownName, sender, TYPE_HEARTRESPONSE);
+    push_send(SINGLE, getRouting(sender), (char*)&newHeader, sizeof(Header));
 }
 
 void msg_heartresponse(const char* sender) {
-    printf("Handling heart response message\n");
-    // TODO vllt in einem anderen thread?
+    receiveHeartbeatResponse(sender);
 }
 
 void msg_error(const char* sender) {
@@ -188,10 +245,16 @@ void protocol_handle_msg(const int connection) {
     int count = read_tcp(connection, &read_buf);
     if (count < 0) {
         if (errno != EAGAIN) {
-            close(connection);
+            close_tcp(connection);
             free(read_buf);
             return;
         }
+    }
+
+    if (count == 0) {
+        close_tcp(connection);
+        free(read_buf);
+        return;
     }
 
     if (count < sizeof(Header)) {
@@ -210,7 +273,7 @@ void protocol_handle_msg(const int connection) {
     char* content = read_buf + sizeof(Header);
 
     if (header.type != TYPE_LOGIN && strcmp(target, ownName) != 0) {
-        forward(target, header, content);
+        forward(target, read_buf);
     } else {
         switch (header.type) {
             case TYPE_LOGIN:

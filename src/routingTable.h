@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 typedef struct __attribute__((packed)) {
     char chatName[32];
@@ -36,6 +37,7 @@ typedef struct __attribute__((packed)) {
     char chatName[32];
     uint32_t adress;
     uint16_t port;
+    bool notResponded;
 } user;
 
 

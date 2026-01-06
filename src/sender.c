@@ -28,25 +28,26 @@ static bool running = false;
 
 static Connection* con_head = NULL;
 
-int get_con(uint64_t addr_port) {
+Connection* get_con(uint64_t addr_port) {
     if (con_head == NULL) {
         con_head = malloc(sizeof(Connection));
         con_head->addr_port = addr_port;
         con_head->socket_fd =
             CLIENT_connect_to(inet_ntoa((struct in_addr){.s_addr = (uint32_t)(addr_port >> 32)}),
                               (uint16_t)(addr_port & 0xFFFFFFFF));
+        con_head->counter = 0;
         con_head->next_item = NULL;
-        return con_head->socket_fd;
+        return con_head;
     } else {
         Connection* current = con_head;
         if (current->addr_port == addr_port) {
-            return current->socket_fd;
+            return current;
         }
 
         while (current->next_item != NULL) {
             current = current->next_item;
             if (current->addr_port == addr_port) {
-                return current->socket_fd;
+                return current;
             }
         }
 
@@ -55,9 +56,10 @@ int get_con(uint64_t addr_port) {
         new_con->socket_fd =
             CLIENT_connect_to(inet_ntoa((struct in_addr){.s_addr = (uint32_t)(addr_port >> 32)}),
                               (uint16_t)(addr_port & 0xFFFFFFFF));
+        new_con->counter = 0;
         new_con->next_item = NULL;
         current->next_item = new_con;
-        return new_con->socket_fd;
+        return new_con;
     }
 }
 
@@ -87,14 +89,34 @@ void* sender_loop(void* arg) {
     while (running) {
         char msg[MSG_SIZE];
         uint64_t dest_addr;
+        msg_counter_t msg_counter;
 
-        int len = pop_send(&dest_addr, msg);
+        int len = pop_send(&msg_counter, &dest_addr, msg);
         if (len > 0) {
-            int fd = get_con(dest_addr);
-            if (send_tcp(fd, msg, len) < 0) {
+            Connection* con = get_con(dest_addr);
+
+            switch (msg_counter) {
+                case UP:
+                    con->counter++;
+                    break;
+                case DOWN:
+                    con->counter--;
+                    break;
+                case KEEP:
+                case SINGLE:
+                    break;
+                default:
+                    // eigentlich ein Fehler
+                    break;
+            }
+
+            if (send_tcp(con->socket_fd, msg, len) < 0) {
                 printf("Error sending message to %lu\n", dest_addr);
             }
-            // TODO close con
+
+            if (con->counter <= 0) {
+                remove_con(dest_addr);
+            }
         }
     }
 

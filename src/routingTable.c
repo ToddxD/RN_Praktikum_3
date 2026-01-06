@@ -118,6 +118,7 @@ void getHopsOneAway(user* hopsOneAway) {
             memcpy(hopsOneAway[count].chatName, routingTable[i].chatName, 32);
             hopsOneAway[count].adress = routingTable[i].adress;
             hopsOneAway[count].port = routingTable[i].port;
+            hopsOneAway[count].notResponded = 1;
             count++;
         }
     }
@@ -168,6 +169,9 @@ int getRoutingTableSize() { return (sizeof(routingTable)); }
 
 void tableToCharArray(uint8_t* ergebnis) {
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
+        if( routingTable[i].hopCount == 0 && strcmp(routingTable[i].chatName, "") == 0){
+            continue;
+        }
         uint8_t* name = (uint8_t*)routingTable[i].chatName;
         for (int j = 0; j < 32; j++) {
             ergebnis[j + i * 80] = name[j];

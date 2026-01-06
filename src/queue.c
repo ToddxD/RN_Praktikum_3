@@ -57,7 +57,7 @@ int push_ui(const char* text_buf, const char* name_buf) {
     return 0;
 }
 
-int pop_send(uint64_t* dest_addr, char* msg) {
+int pop_send(msg_counter_t* msg_counter, uint64_t* dest_addr, char* msg) {
     pthread_mutex_lock(&send_queue.queue_mutex);
 
     if (send_queue.head == NULL) {
@@ -69,6 +69,7 @@ int pop_send(uint64_t* dest_addr, char* msg) {
     memcpy(msg, to_pop->msg, to_pop->msg_len);
     *dest_addr = to_pop->dest_addr;
     int size = to_pop->msg_len;
+    *msg_counter = to_pop->msg_counter;
     send_queue.head = to_pop->next;
     free(to_pop);
 
@@ -76,13 +77,14 @@ int pop_send(uint64_t* dest_addr, char* msg) {
     return size;
 }
 
-int push_send(const uint64_t dest_addr, const char* msg, size_t msg_len) {
+int push_send(msg_counter_t msg_counter, const uint64_t dest_addr, const char* msg, size_t msg_len) {
     pthread_mutex_lock(&send_queue.queue_mutex);
     if (send_queue.head == NULL) {
         send_queue.head = malloc(sizeof(QueueMessage_SEND));
         send_queue.head->dest_addr = dest_addr;
         memcpy(send_queue.head->msg, msg, msg_len);
         send_queue.head->msg_len = msg_len;
+        send_queue.head->msg_counter = msg_counter;
         send_queue.head->next = NULL;
     } else {
         int size = 1;
@@ -99,6 +101,7 @@ int push_send(const uint64_t dest_addr, const char* msg, size_t msg_len) {
         new_msg->dest_addr = dest_addr;
         memcpy(new_msg->msg, msg, msg_len);
         new_msg->msg_len = msg_len;
+        new_msg->msg_counter = msg_counter;
         new_msg->next = NULL;
         current->next = new_msg;
     }

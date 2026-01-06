@@ -6,6 +6,7 @@
 typedef struct Connection {
     uint64_t addr_port;
     int socket_fd;
+    int counter;
     struct Connection* next_item;
 } Connection;
 
