@@ -43,6 +43,17 @@ int checkNameInTable(char* chatName) {
     return 0;
 }
 
+int checkNameNotInMessage(uint8_t* message, char* chatName) {
+    for (int i = 0; i < (sizeof(message) / OFFSETMESSAGECOUNT); i++) {
+        char currentName[32];
+        memcpy(currentName, message + i * OFFSETMESSAGECOUNT + OFFSETCHATNAME, 32);
+        if (strcmp(currentName, chatName) == 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 void tableUpdate(uint8_t* message, int length) {
     uint8_t workingArray[OFFSETMESSAGECOUNT];
     memset(workingArray, 0, OFFSETMESSAGECOUNT);
@@ -156,7 +167,7 @@ int getSizeofRoutingTable(){
 }
 int deleteFromTable(char* chatName) {
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
-        if (strcmp(routingTable[i].chatName, chatName) == 0) {
+        if (strcmp(routingTable[i].nextChatName, chatName) == 0) {
             memset(&routingTable[i], 0, sizeof(routingTableEntry));
             freeEntries++;
             return 0;
