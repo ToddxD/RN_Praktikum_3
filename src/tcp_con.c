@@ -102,7 +102,7 @@ int read_tcp(int socket_fd, char** read_buf) {
             return -1;
         }
 
-        if (c == 0) {
+        if (c == 0 || c < BUF_SIZE) {
             break;
         }
     }
