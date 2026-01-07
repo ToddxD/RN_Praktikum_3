@@ -35,6 +35,11 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     char chatName[32];
+    uint8_t reachable;
+} reachables;
+
+typedef struct __attribute__((packed)) {
+    char chatName[32];
     uint32_t adress;
     uint16_t port;
     bool notResponded;

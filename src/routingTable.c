@@ -14,7 +14,8 @@
 #include <unistd.h>
 #include "ui.h"
 
-routingTableEntry routingTable[5] = {0};
+routingTableEntry routingTable[100] = {0};
+reachables reachbleTable[100] = {0};
 int freeEntries = 99;
 
 void initTable(char* ownName, int ownAdress, int ownPort) {
@@ -90,6 +91,8 @@ void tableUpdate(uint8_t* message, int length) {
                         strcmp(routingTable[j].chatName, "") == 0) {
                         routingTable[j] = newEntry;
                         freeEntries--;
+                        reachbleTable[j].reachable = 1;
+                        memcpy(reachbleTable[j].chatName, workingArray + OFFSETCHATNAME, 32);
                         push_ui("<Empfänger hat sich angemeldet!>", newEntry.chatName);
                         break;
                     }
@@ -116,8 +119,25 @@ void tableUpdate(uint8_t* message, int length) {
                             (uint32_t)(workingArray[OFFSETHOPCOUNT + 2] << 8) |
                             (uint32_t)(workingArray[OFFSETHOPCOUNT + 3])) +
                            1);
+            reachbleTable[index-1].reachable = 1;
         } else {
+            reachbleTable[index-1].reachable = 1;
             continue;
+        }
+    }
+    cleanUp();
+}
+
+void cleanUp() {
+    for (int i = 0; i < sizeof(reachbleTable) / sizeof(reachables); i++) {
+        if (reachbleTable[i].chatName[0] == '\0') {
+            break;
+        }
+        if (reachbleTable[i].reachable == 0) {
+            deleteFromTable(reachbleTable[i].chatName);
+            push_ui("<Empfänger %s nicht erreichbar, aus Routing Tabelle entfernt!>", reachbleTable[i].chatName);
+        } else {
+            reachbleTable[i].reachable = 0;
         }
     }
 }
@@ -176,7 +196,16 @@ int deleteFromTable(char* chatName) {
     return -1;
 }
 
-int getRoutingTableSize() { return (sizeof(routingTable)); }
+int getRoutingTableSize() { 
+    int result = 0;
+    for (int i = 0; i < sizeof(routingTable) / 80; i++) {
+        if( routingTable[i].hopCount == 0 && strcmp(routingTable[i].chatName, "") == 0){
+            continue;
+        }
+        result += OFFSETMESSAGECOUNT;
+    }
+    return result;
+}
 
 void tableToCharArray(uint8_t* ergebnis) {
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
@@ -212,6 +241,9 @@ void tableToCharArray(uint8_t* ergebnis) {
 void printRoutingTable() {
     printf("Routing Table:\n");
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
+        if(routingTable[i].hopCount == 0 && strcmp(routingTable[i].chatName, "") == 0){
+            continue;
+        }
         printf("Entry %d:\n", i);
         printf(" Chat Name: %s\n", routingTable[i].chatName);
         printf(" Address: %u.%u.%u.%u\n", (uint8_t)(routingTable[i].adress >> 24),
