@@ -165,10 +165,11 @@ void msg_login(const char* sender, const char* content) {
     memset(hopsOneAway, 0, sizeof(hopsOneAway));
     getHopsOneAway(hopsOneAway);
     int index = 0;
-
+    Header header;
+    protocol_create_header(&header, ownName, sender, TYPE_HEART);
+    push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
     while (hopsOneAway[index].chatName[0] != '\0' &&
            index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
-        Header header;
         protocol_create_header(&header, ownName, hopsOneAway[index].chatName, TYPE_ROUTE);
         char message[sizeof(Header) + sizeof(ergebnis)];
         memcpy(message, &header, sizeof(Header));
@@ -286,7 +287,7 @@ void protocol_handle_msg(const int connection) {
                 msg_logout(sender);
                 break;
             case TYPE_ROUTE:
-                msg_route(sender, content, count - sizeof(Header));
+                msg_route(sender, content, count - sizeof(Header)-1);
                 break;
             case TYPE_HEART:
                 msg_heart(sender);
