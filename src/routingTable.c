@@ -295,14 +295,14 @@ void tableToCharArray(uint8_t* ergebnis) {
         ergebnis[count * 80 + OFFSETPORT] = (uint8_t)(routingTable[i]->port >> 8);
         ergebnis[count * 80 + OFFSETPORT + 1] = (uint8_t)(routingTable[i]->port);
         for (int k = 0; k < 32; k++) {
-            ergebnis[OFFSETNEXTCHATNAME + k + count * 80] = routingTable[i]->nextChatName[k];
+            ergebnis[OFFSETNEXTCHATNAME + k + count * 80] = routingTable[0]->nextChatName[k];
         }
-        ergebnis[count * 80 + OFFSETNEXTADRESS] = (uint8_t)(routingTable[i]->nextAdress >> 24);
-        ergebnis[count * 80 + OFFSETNEXTADRESS + 1] = (uint8_t)(routingTable[i]->nextAdress >> 16);
-        ergebnis[count * 80 + OFFSETNEXTADRESS + 2] = (uint8_t)(routingTable[i]->nextAdress >> 8);
-        ergebnis[count * 80 + OFFSETNEXTADRESS + 3] = (uint8_t)(routingTable[i]->nextAdress);
-        ergebnis[count * 80 + OFFSETNEXTPORT] = (uint8_t)(routingTable[i]->nextPort >> 8);
-        ergebnis[count * 80 + OFFSETNEXTPORT + 1] = (uint8_t)(routingTable[i]->nextPort);
+        ergebnis[count * 80 + OFFSETNEXTADRESS] = (uint8_t)(routingTable[0]->nextAdress >> 24);
+        ergebnis[count * 80 + OFFSETNEXTADRESS + 1] = (uint8_t)(routingTable[0]->nextAdress >> 16);
+        ergebnis[count * 80 + OFFSETNEXTADRESS + 2] = (uint8_t)(routingTable[0]->nextAdress >> 8);
+        ergebnis[count * 80 + OFFSETNEXTADRESS + 3] = (uint8_t)(routingTable[0]->nextAdress);
+        ergebnis[count * 80 + OFFSETNEXTPORT] = (uint8_t)(routingTable[0]->nextPort >> 8);
+        ergebnis[count * 80 + OFFSETNEXTPORT + 1] = (uint8_t)(routingTable[0]->nextPort);
         ergebnis[count * 80 + OFFSETHOPCOUNT] = (uint8_t)(routingTable[i]->hopCount >> 24);
         ergebnis[count * 80 + OFFSETHOPCOUNT + 1] = (uint8_t)(routingTable[i]->hopCount >> 16);
         ergebnis[count * 80 + OFFSETHOPCOUNT + 2] = (uint8_t)(routingTable[i]->hopCount >> 8);
