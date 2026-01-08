@@ -279,7 +279,7 @@ void protocol_handle_msg(const int connection) {
     }
 
     if (count == 0) {
-        close_tcp(connection);
+        //close_tcp(connection);
         free(read_buf);
         return;
     }
