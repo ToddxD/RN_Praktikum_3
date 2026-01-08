@@ -317,19 +317,19 @@ void printRoutingTable() {
         }
         char str[140] = {0};
         sprintf(str, "To %s (%u.%u.%u.%u:%u) via %s (%u.%u.%u.%u:%u) in %u Hops",
-                routingTable[i].chatName,
-                (uint8_t)(routingTable[i].adress >> 24),
-                (uint8_t)(routingTable[i].adress >> 16),
-                (uint8_t)(routingTable[i].adress >> 8),
-                (uint8_t)(routingTable[i].adress),
-                routingTable[i].port,
-                routingTable[i].nextChatName,
-                (uint8_t)(routingTable[i].nextAdress >> 24),
-                (uint8_t)(routingTable[i].nextAdress >> 16),
-                (uint8_t)(routingTable[i].nextAdress >> 8),
-                (uint8_t)(routingTable[i].nextAdress),
-                routingTable[i].nextPort,
-                routingTable[i].hopCount);
+                routingTable[i]->chatName,
+                (uint8_t)(routingTable[i]->adress >> 24),
+                (uint8_t)(routingTable[i]->adress >> 16),
+                (uint8_t)(routingTable[i]->adress >> 8),
+                (uint8_t)(routingTable[i]->adress),
+                routingTable[i]->port,
+                routingTable[i]->nextChatName,
+                (uint8_t)(routingTable[i]->nextAdress >> 24),
+                (uint8_t)(routingTable[i]->nextAdress >> 16),
+                (uint8_t)(routingTable[i]->nextAdress >> 8),
+                (uint8_t)(routingTable[i]->nextAdress),
+                routingTable[i]->nextPort,
+                routingTable[i]->hopCount);
         push_ui(str, "System");
     }
 }
