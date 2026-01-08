@@ -83,7 +83,7 @@ void tableUpdate(uint8_t* message, int length) {
             newEntry->adress = adress;
             newEntry->port = (uint16_t)(workingArray[OFFSETPORT] << 8) |
                             (uint16_t)(workingArray[OFFSETPORT + 1]);
-                            
+
             getName(charName, workingArray + OFFSETNEXTCHATNAME);
             memcpy(newEntry->nextChatName, charName, 32);
             newEntry->nextAdress = ((uint32_t)(workingArray[OFFSETNEXTADRESS] << 24)) |
@@ -150,7 +150,6 @@ void tableUpdate(uint8_t* message, int length) {
         pthread_mutex_unlock(&tableLock);
         return;
     }
-    printRoutingTable();
     cleanUp();
     pthread_mutex_unlock(&tableLock);
 }
@@ -313,8 +312,7 @@ void tableToCharArray(uint8_t* ergebnis) {
 }
 
 void printRoutingTable() {
-    char str[1000] = {0};
-    sprintf(str, "Routing Table:\n");
+    //sprintf(str, "Routing Table:\n");
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
         if(routingTable[i] == NULL){
             continue;
@@ -322,19 +320,21 @@ void printRoutingTable() {
         if(routingTable[i]->hopCount == 0 && strcmp(routingTable[i]->chatName, "") == 0){
             continue;
         }
-        sprintf(str + strlen(str), "Entry %d:\n", i);
-        sprintf(str + strlen(str), " Chat Name: %s\n", routingTable[i]->chatName);
-        sprintf(str + strlen(str), " Address: %u.%u.%u.%u\n", (uint8_t)(routingTable[i]->adress >> 24),
-               (uint8_t)(routingTable[i]->adress >> 16), (uint8_t)(routingTable[i]->adress >> 8),
-               (uint8_t)(routingTable[i]->adress));
-        sprintf(str + strlen(str), " Port: %u\n", routingTable[i]->port);
-        sprintf(str + strlen(str), " Next Chat Name: %s\n", routingTable[i]->nextChatName);
-        sprintf(str + strlen(str), " Next Address: %u.%u.%u.%u\n", (uint8_t)(routingTable[i]->nextAdress >> 24),
-               (uint8_t)(routingTable[i]->nextAdress >> 16),
-               (uint8_t)(routingTable[i]->nextAdress >> 8), (uint8_t)(routingTable[i]->nextAdress));
-        sprintf(str + strlen(str), " Next Port: %u\n", routingTable[i]->nextPort);
-        sprintf(str + strlen(str), " Hop Count: %u\n", routingTable[i]->hopCount);
+        char str[140] = {0};
+        sprintf(str, "To %s (%u.%u.%u.%u:%u) via %s (%u.%u.%u.%u:%u) in %u Hops",
+                routingTable[i]->chatName,
+                (uint8_t)(routingTable[i]->adress >> 24),
+                (uint8_t)(routingTable[i]->adress >> 16),
+                (uint8_t)(routingTable[i]->adress >> 8),
+                (uint8_t)(routingTable[i]->adress),
+                routingTable[i]->port,
+                routingTable[i]->nextChatName,
+                (uint8_t)(routingTable[i]->nextAdress >> 24),
+                (uint8_t)(routingTable[i]->nextAdress >> 16),
+                (uint8_t)(routingTable[i]->nextAdress >> 8),
+                (uint8_t)(routingTable[i]->nextAdress),
+                routingTable[i]->nextPort,
+                routingTable[i]->hopCount);
+        push_ui(str, "System");
     }
-
-    push_ui(str, "System");
 }

@@ -11,6 +11,8 @@
 #include "queue.h"
 #include "protocol_header.h"
 #include "protocol.h"
+#include <signal.h>
+
 
 static Tab tabs[MAX_TABS];
 static int tab_count = 0;
@@ -19,13 +21,22 @@ static int active_tab = -1;
 static struct termios orig_term;
 static int rows, cols;
 
+static volatile sig_atomic_t running = 1;
+static volatile sig_atomic_t resized = 0;
+
+void handle_sigint(int sig) {
+    (void)sig;
+    running = 0;
+}
+
+
 /* ---------- Terminal ---------- */
 
 void enable_raw(void) {
     struct termios t;
     tcgetattr(STDIN_FILENO, &orig_term);
     t = orig_term;
-    t.c_lflag &= ~(ICANON | ECHO);
+    t.c_lflag &= ~(ICANON | ECHO | ISIG);
     t.c_cc[VMIN] = 0;
     t.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSANOW, &t);
@@ -181,35 +192,59 @@ void redraw(const char *input) {
 int read_key(void) {
     fd_set fds;
     struct timeval tv = {0, 100000};
+
     FD_ZERO(&fds);
     FD_SET(STDIN_FILENO, &fds);
 
-    if (select(1, &fds, NULL, NULL, &tv) > 0) {
+    int r = select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
+
+    if (r > 0) {
         char c;
-        if (read(0, &c, 1) == 1)
+        if (read(STDIN_FILENO, &c, 1) == 1)
             return c;
     }
+
     return -1;
 }
 
 /* ---------- Main ---------- */
+
+void cleanup(void) {
+    disable_raw();
+    printf("\033[0m");     // Farben zurücksetzen
+    printf("\033[?25h");   // Cursor anzeigen
+    printf("\033[H\n");
+    fflush(stdout);
+
+    do_logout();
+}
 
 int start_ui() {
     char input[MAX_TEXT] = {0};
     int ipos = 0;
 
     enable_raw();
-    atexit(disable_raw);
+    atexit(cleanup);
+    
+    signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint);
+
     get_size();
 
-    while (1) {
+    add_foreign_message("System", "Debug-Chat:");
+
+    while (running) {
         redraw(input);
         int k = read_key();
+        if (k == 3) {   // Ctrl+C = ASCII ETX
+            running = 0;
+            break;
+        }
 
         // nach neuen Nachrichten schauen:
         char msg_text[MAX_TEXT];
         char msg_name[32];
-        while (pop_ui(msg_text, msg_name) == 0) {
+        while (pop_ui(msg_text, msg_name) == 0 && running) {
             add_foreign_message(msg_name, msg_text);
         }
 
@@ -234,4 +269,6 @@ int start_ui() {
             input[ipos] = 0;
         }
     }
+
+    return 0;
 }

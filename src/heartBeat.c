@@ -50,9 +50,11 @@ void* heartBeatFunction(void* arg) {
             if(users.oneHopaway[i].chatName[0] == '\0') {
                 break;
             }
+
             if(users.oneHopaway[i].notResponded == 0) {
-                printf("User %s is not responding. Removing from routing table.\n", users.oneHopaway[i].chatName);
-                push_ui("<Empfänger %s nicht erreichbar, aus Routing Tabelle entfernt!>", users.oneHopaway[i].chatName);
+                char str[100] = {0};
+                sprintf(str, "User %s is not responding. Removing from routing table.\n", users.oneHopaway[i].chatName);
+                push_ui(str, users.oneHopaway[i].chatName);
                 deleteFromTable(users.oneHopaway[i].chatName);
                 memset(&users.oneHopaway[i], 0, sizeof(user));
                 // After deletion, send updated ROUTE messages to all one-hop-away users

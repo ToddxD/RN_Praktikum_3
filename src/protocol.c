@@ -19,15 +19,23 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "heartBeat.h"
 #include "protocol_header.h"
 #include "queue.h"
 #include "routingTable.h"
 #include "tcp_con.h"
-#include "heartBeat.h"
 
 char ownName[32];
 
 void do_chat(const char* target, const char* msg) {
+    if (strcmp(target, "System") == 0) {
+        if (strcmp(msg, "routing") == 0) {
+            printRoutingTable();
+        }
+        return;
+    }
+
+
     Header newHeader;
     int offset = 0;
     protocol_create_header(&newHeader, ownName, target, TYPE_CHAT);
@@ -40,7 +48,8 @@ void do_chat(const char* target, const char* msg) {
     message[offset] = EOT;
 
     uint64_t targetAdresseUndPort = getRouting(target);
-    push_send(SINGLE, targetAdresseUndPort, message, msglen(message)); // TODO SINGLE zu UP/DOWN, wenn fragmentiert
+    push_send(SINGLE, targetAdresseUndPort, message,
+              msglen(message));  // TODO SINGLE zu UP/DOWN, wenn fragmentiert
 }
 
 void do_login(const char* chat_name, const char* local_host, const int local_port,
@@ -48,12 +57,12 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
     // printf("Sende login\n");
     Header newHeader;
     int offset = 0;
-    protocol_create_header(&newHeader, ownName, "???", TYPE_LOGIN);
+    protocol_create_header(&newHeader, ownName, "", TYPE_LOGIN);
     char message[MSG_SIZE] = {0};
     memset(message, 0, sizeof(message));
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
-    getName(message + offset, chat_name);  // TODO wie soll der Name eigentlich drin stehen?
+    getName(message + offset, chat_name);
     offset += NAME_LEN;
 
     struct in_addr local_addr;
@@ -73,11 +82,23 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
               msglen(message));
 }
 
+void do_logout() {
+    Header newHeader;
+    protocol_create_header(&newHeader, ownName, "\0", TYPE_LOGOUT);
+    char message[MSG_SIZE] = {0};
+
+    memset(message, 0, sizeof(message));
+    memcpy(message, &newHeader, sizeof(Header));
+    message[sizeof(Header)] = EOT;
+
+    send_to_all_neighboors(message, "\0", sizeof(message));
+}
+
 // Liste -- kann ggf. verallgemeinert werden -----------------------------------
-struct list{
+struct list {
     char chatName[32];
     struct list* next;
-} *list_head;
+}* list_head;
 
 // @return 1, wenn schon vorhanden, sonst 0
 int add_list(const char* chatName) {
@@ -125,7 +146,7 @@ void remove_list(const char* chatName) {
 // -------------------------------------------------------------------
 
 void forward(const char* target, const char* msg) {
-    //printf("Forwarding message to %s\n", target);
+    // printf("Forwarding message to %s\n", target);
     uint64_t targetAdresseUndPort = getRouting(target);
     if (targetAdresseUndPort == 0) {
         printf("No route to target %s\n", target);
@@ -151,8 +172,16 @@ void msg_login(const char* sender, const char* content) {
     // printf("Handling login message\n");
     uint8_t contentNew[OFFSETMESSAGECOUNT];
     memset(contentNew, 0, sizeof(contentNew));
-    memcpy(contentNew, content, OFFSETNEXTCHATNAME);
-    memcpy(contentNew + OFFSETNEXTCHATNAME, content, OFFSETNEXTCHATNAME);
+    // Name
+    getName((char*)contentNew, (char*)content);
+    // Addresse und Port
+    memcpy(contentNew + OFFSETADRESS, content + OFFSETADRESS, OFFSETNEXTCHATNAME-OFFSETADRESS);
+
+    // Next Name
+    getName((char*)contentNew + OFFSETNEXTCHATNAME, (char*)content);
+    // Next Name und Port
+    memcpy(contentNew + OFFSETNEXTCHATNAME + OFFSETADRESS, content + OFFSETADRESS, OFFSETNEXTCHATNAME-OFFSETADRESS);
+
     contentNew[OFFSETHOPCOUNT] = 0;  // hop count auf 0 setzen
     tableUpdate(contentNew, sizeof(contentNew));
     uint8_t ergebnis[getRoutingTableSize()];
@@ -161,21 +190,35 @@ void msg_login(const char* sender, const char* content) {
     // sender zur routing tabelle hinzufügen
     // aktualisierte ROUTE message versenden
 
+	Header header;
+	protocol_create_header(&header, ownName, sender, TYPE_HEART);
+	push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
+
+    protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
+    char message[sizeof(Header) + sizeof(ergebnis)];
+    memcpy(message, &header, sizeof(Header));
+    memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
+
+    send_to_all_neighboors(message, "\0", sizeof(message));
+}
+
+void send_to_all_neighboors(char full_message[], char* skip_sender, int size) {
     user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
     memset(hopsOneAway, 0, sizeof(hopsOneAway));
     getHopsOneAway(hopsOneAway);
     int index = 0;
-    Header header;
-    protocol_create_header(&header, ownName, sender, TYPE_HEART);
-    push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
+
     while (hopsOneAway[index].chatName[0] != '\0' &&
            index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
-        protocol_create_header(&header, ownName, hopsOneAway[index].chatName, TYPE_ROUTE);
-        char message[sizeof(Header) + sizeof(ergebnis)];
-        memcpy(message, &header, sizeof(Header));
-        memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
 
-        push_send(SINGLE, getRouting(hopsOneAway[index].chatName), message, sizeof(message));
+        setName(full_message + 34, hopsOneAway[index].chatName); // set target name in header
+
+        if (strcmp(hopsOneAway[index].chatName, skip_sender) == 0) {
+            // printf("Not sending ROUTE to sender %s\n", sender);
+            index++;
+            continue;
+        }
+        push_send(SINGLE, (getRouting(hopsOneAway[index].chatName)), full_message, size);
         index++;
     }
 }
@@ -199,25 +242,14 @@ void msg_route(const char* sender, const char* content, int size) {
     uint8_t message[getRoutingTableSize()];
     memset(message, 0, sizeof(message));
     tableToCharArray(message);
-    user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
-    memset(hopsOneAway, 0, sizeof(hopsOneAway));
-    getHopsOneAway(hopsOneAway);
-    int index = 0;
-    while (hopsOneAway[index].chatName[0] != '\0' &&
-           index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
-        Header header;
-        protocol_create_header(&header, sender, hopsOneAway[index].chatName, TYPE_ROUTE);
-        char fullMessage[sizeof(Header) + sizeof(message)];
-        memcpy(fullMessage, &header, sizeof(Header));
-        memcpy(fullMessage + sizeof(Header), message, sizeof(message));
-        if (strcmp(hopsOneAway[index].chatName, sender) == 0) {
-            //printf("Not sending ROUTE to sender %s\n", sender);
-            index++;
-            continue;
-        }
-        push_send(SINGLE, (getRouting(hopsOneAway[index].chatName)), fullMessage, sizeof(fullMessage));
-        index++;
-    }
+
+    Header header;
+    protocol_create_header(&header, sender, "\0", TYPE_ROUTE);
+    char fullMessage[sizeof(Header) + sizeof(message)];
+    memcpy(fullMessage, &header, sizeof(Header));
+    memcpy(fullMessage + sizeof(Header), message, sizeof(message));
+
+    send_to_all_neighboors(fullMessage, sender, sizeof(fullMessage));
     // hop counts erhöhen
     // eigene routing tabelle mit neuen Daten aktualisieren
     // aktualisierte ROUTE message versenden
@@ -232,12 +264,9 @@ void msg_heart(const char* sender) {
     push_send(SINGLE, getRouting(sender), (char*)&newHeader, sizeof(Header));
 }
 
-void msg_heartresponse(const char* sender) {
-    receiveHeartbeatResponse(sender);
-}
+void msg_heartresponse(const char* sender) { receiveHeartbeatResponse(sender); }
 
 void msg_error(const char* sender) {
-    printf("Handling error message\n");
     push_ui("<Fehler beim Senden!>", sender);
 }
 
@@ -259,7 +288,7 @@ void protocol_handle_msg(const int connection) {
     }
 
     if (count < sizeof(Header)) {
-        printf("[Server] Message too short\n");
+        push_ui("[Server] Message too short\n", "System");
         free(read_buf);
         return;
     }
@@ -299,7 +328,10 @@ void protocol_handle_msg(const int connection) {
                 msg_error(sender);
                 break;
             default:
-                printf("[Server] Unknown message type: %d\n", header.type);
+                printf(""); // Das muss so...
+                char unknownMsg[40] = {0};
+                sprintf(unknownMsg, "[Server] Unknown message type: %d\n", header.type);
+                push_ui(unknownMsg, "System");
         }
     }
 
