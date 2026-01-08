@@ -5,4 +5,6 @@ void start_server(char* _local_address, int _port, char* chat_name);
 
 void stop_server();
 
-#endif // SERVER_H
+extern int epoll;
+
+#endif  // SERVER_H

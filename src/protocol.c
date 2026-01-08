@@ -35,7 +35,6 @@ void do_chat(const char* target, const char* msg) {
         return;
     }
 
-
     Header newHeader;
     int offset = 0;
     protocol_create_header(&newHeader, ownName, target, TYPE_CHAT);
@@ -175,12 +174,13 @@ void msg_login(const char* sender, const char* content) {
     // Name
     getName((char*)contentNew, (char*)content);
     // Addresse und Port
-    memcpy(contentNew + OFFSETADRESS, content + OFFSETADRESS, OFFSETNEXTCHATNAME-OFFSETADRESS);
+    memcpy(contentNew + OFFSETADRESS, content + OFFSETADRESS, OFFSETNEXTCHATNAME - OFFSETADRESS);
 
     // Next Name
     getName((char*)contentNew + OFFSETNEXTCHATNAME, (char*)content);
     // Next Name und Port
-    memcpy(contentNew + OFFSETNEXTCHATNAME + OFFSETADRESS, content + OFFSETADRESS, OFFSETNEXTCHATNAME-OFFSETADRESS);
+    memcpy(contentNew + OFFSETNEXTCHATNAME + OFFSETADRESS, content + OFFSETADRESS,
+           OFFSETNEXTCHATNAME - OFFSETADRESS);
 
     contentNew[OFFSETHOPCOUNT] = 0;  // hop count auf 0 setzen
     tableUpdate(contentNew, sizeof(contentNew));
@@ -190,9 +190,9 @@ void msg_login(const char* sender, const char* content) {
     // sender zur routing tabelle hinzufügen
     // aktualisierte ROUTE message versenden
 
-	Header header;
-	protocol_create_header(&header, ownName, sender, TYPE_HEART);
-	push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
+    Header header;
+    protocol_create_header(&header, ownName, sender, TYPE_HEART);
+    push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
 
     protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
     char message[sizeof(Header) + sizeof(ergebnis)];
@@ -210,8 +210,7 @@ void send_to_all_neighboors(char full_message[], char* skip_sender, int size) {
 
     while (hopsOneAway[index].chatName[0] != '\0' &&
            index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
-
-        setName(full_message + 34, hopsOneAway[index].chatName); // set target name in header
+        setName(full_message + 34, hopsOneAway[index].chatName);  // set target name in header
 
         if (strcmp(hopsOneAway[index].chatName, skip_sender) == 0) {
             // printf("Not sending ROUTE to sender %s\n", sender);
@@ -266,9 +265,7 @@ void msg_heart(const char* sender) {
 
 void msg_heartresponse(const char* sender) { receiveHeartbeatResponse(sender); }
 
-void msg_error(const char* sender) {
-    push_ui("<Fehler beim Senden!>", sender);
-}
+void msg_error(const char* sender) { push_ui("<Fehler beim Senden!>", sender); }
 
 void protocol_handle_msg(const int connection) {
     char* read_buf;
@@ -302,7 +299,9 @@ void protocol_handle_msg(const int connection) {
     getName(target, header.targetname);
     char* content = read_buf + sizeof(Header);
 
-    if (header.type != TYPE_LOGIN && strcmp(target, ownName) != 0) {
+    // Da einige in ihren Route Nachrichten kein Target schreiben und Route Nachrichten eh nie
+    // weitergeletet werden, hier abfangen:
+    if (header.type != TYPE_LOGIN && header.type != TYPE_ROUTE && strcmp(target, ownName) != 0) {
         forward(target, read_buf);
     } else {
         switch (header.type) {
@@ -316,7 +315,7 @@ void protocol_handle_msg(const int connection) {
                 msg_logout(sender);
                 break;
             case TYPE_ROUTE:
-                msg_route(sender, content, count - sizeof(Header)-1);
+                msg_route(sender, content, count - sizeof(Header) - 1);
                 break;
             case TYPE_HEART:
                 msg_heart(sender);
@@ -328,7 +327,7 @@ void protocol_handle_msg(const int connection) {
                 msg_error(sender);
                 break;
             default:
-                printf(""); // Das muss so...
+                printf("");  // Das muss so...
                 char unknownMsg[40] = {0};
                 sprintf(unknownMsg, "[Server] Unknown message type: %d\n", header.type);
                 push_ui(unknownMsg, "System");

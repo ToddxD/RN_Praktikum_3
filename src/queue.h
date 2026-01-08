@@ -2,19 +2,19 @@
 #define QUEUE_H
 
 #include <pthread.h>
+
 #include "protocol_header.h"
 
 #define MAX_QUEUE_SIZE 100
 
 // TCP Connection Zähler
-#define SINGLE 1 // Einmalige Nachricht
-#define KEEP 2 // Mehrere Nachrichten werden folgen (Serie)
-#define UP 3 // Erste Nachricht einer Serie
-#define DOWN 4 // Es werden keine Nachrichten mehr folgen
+#define SINGLE 1  // Einmalige Nachricht
+#define KEEP 2    // Mehrere Nachrichten werden folgen (Serie)
+#define UP 3      // Erste Nachricht einer Serie
+#define DOWN 4    // Es werden keine Nachrichten mehr folgen
 typedef int msg_counter_t;
 
-
-typedef struct QueueMessage_UI {    
+typedef struct QueueMessage_UI {
     char text[MSG_SIZE - sizeof(Header)];
     char name[32];
     struct QueueMessage_UI* next;

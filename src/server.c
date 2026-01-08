@@ -29,12 +29,14 @@ static bool running = false;
 static int port = 0;
 static char* local_address = NULL;
 
+int epoll = -1;
+
 void* server_loop(void* arg) {
     running = true;
 
     int server_socket = SERVER_listen_on(local_address, port);
 
-    int epoll = epoll_create1(0);
+    epoll = epoll_create1(0);
     if (epoll < 0) {
         perror("[Server] error creating epoll");
     }

@@ -23,6 +23,7 @@ void protocol_create_header(Header* header, const char* sendername, const char* 
     memset(header, 0, sizeof(Header));
     setName(header->sendername, sendername);
     setName(header->targetname, targetname);
+    header->version = 1;
     header->type = type;
 }
 

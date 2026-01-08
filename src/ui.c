@@ -1,18 +1,18 @@
 #define _POSIX_C_SOURCE 200112L
+#include "ui.h"
+
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <termios.h>
-#include <sys/select.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
+#include <termios.h>
+#include <unistd.h>
 
-#include "ui.h"
-#include "queue.h"
-#include "protocol_header.h"
 #include "protocol.h"
-#include <signal.h>
-
+#include "protocol_header.h"
+#include "queue.h"
 
 static Tab tabs[MAX_TABS];
 static int tab_count = 0;
@@ -29,7 +29,6 @@ void handle_sigint(int sig) {
     running = 0;
 }
 
-
 /* ---------- Terminal ---------- */
 
 void enable_raw(void) {
@@ -42,9 +41,7 @@ void enable_raw(void) {
     tcsetattr(STDIN_FILENO, TCSANOW, &t);
 }
 
-void disable_raw(void) {
-    tcsetattr(STDIN_FILENO, TCSANOW, &orig_term);
-}
+void disable_raw(void) { tcsetattr(STDIN_FILENO, TCSANOW, &orig_term); }
 
 void get_size(void) {
     struct winsize w;
@@ -55,45 +52,36 @@ void get_size(void) {
 
 /* ---------- ANSI Helpers ---------- */
 
-void cls(void) {
-    printf("\033[2J\033[H");
-}
+void cls(void) { printf("\033[2J\033[H"); }
 
-void move(int r, int c) {
-    printf("\033[%d;%dH", r, c);
-}
+void move(int r, int c) { printf("\033[%d;%dH", r, c); }
 
-void color(const char *c) {
-    printf("%s", c);
-}
+void color(const char* c) { printf("%s", c); }
 
 /* ---------- Tabs ---------- */
 
-int find_tab(const char *user) {
+int find_tab(const char* user) {
     for (int i = 0; i < tab_count; i++)
-        if (strcmp(tabs[i].user, user) == 0)
-            return i;
+        if (strcmp(tabs[i].user, user) == 0) return i;
     return -1;
 }
 
-void add_message(const char *user, const char *text, int self) {
+void add_message(const char* user, const char* text, int self) {
     int i = find_tab(user);
     if (i < 0 && tab_count < MAX_TABS) {
         i = tab_count++;
-        strncpy(tabs[i].user, user, sizeof(tabs[i].user)-1);
+        strncpy(tabs[i].user, user, sizeof(tabs[i].user) - 1);
         tabs[i].msg_count = 0;
         tabs[i].unread = 0;
-        if (active_tab < 0)
-            active_tab = i;
+        if (active_tab < 0) active_tab = i;
     }
 
-    Tab *t = &tabs[i];
-    Message *m = &t->msgs[t->msg_count++];
-    strncpy(m->text, text, MAX_TEXT-1);
+    Tab* t = &tabs[i];
+    Message* m = &t->msgs[t->msg_count++];
+    strncpy(m->text, text, MAX_TEXT - 1);
     m->self = self;
 
-    if (!self && i != active_tab)
-        t->unread = 1;
+    if (!self && i != active_tab) t->unread = 1;
 }
 
 /* ---------- Rendering ---------- */
@@ -115,11 +103,11 @@ void draw_tabs(void) {
 }
 
 void draw_messages(void) {
-    Tab *t = &tabs[active_tab];
+    Tab* t = &tabs[active_tab];
     int line = 3;
 
     for (int i = 0; i < t->msg_count && line < rows - 2; i++) {
-        Message *m = &t->msgs[i];
+        Message* m = &t->msgs[i];
         int len = strlen(m->text);
 
         if (m->self) {
@@ -134,26 +122,24 @@ void draw_messages(void) {
     }
 }
 
-static void add_message_internal(int tab, const char *text, int self) {
-    Tab *t = &tabs[tab];
+static void add_message_internal(int tab, const char* text, int self) {
+    Tab* t = &tabs[tab];
 
-    if (t->msg_count >= MAX_MSGS)
-        return;
+    if (t->msg_count >= MAX_MSGS) return;
 
-    Message *m = &t->msgs[t->msg_count++];
+    Message* m = &t->msgs[t->msg_count++];
     strncpy(m->text, text, MAX_TEXT - 1);
     m->text[MAX_TEXT - 1] = 0;
     m->self = self;
 }
 
-void add_own_message(const char *text) {
-    if (active_tab < 0)
-        return;
+void add_own_message(const char* text) {
+    if (active_tab < 0) return;
 
     add_message_internal(active_tab, text, 1);
 }
 
-void add_foreign_message(const char *user, const char *text) {
+void add_foreign_message(const char* user, const char* text) {
     int i = find_tab(user);
 
     if (i < 0 && tab_count < MAX_TABS) {
@@ -163,26 +149,23 @@ void add_foreign_message(const char *user, const char *text) {
         tabs[i].msg_count = 0;
         tabs[i].unread = 0;
 
-        if (active_tab < 0)
-            active_tab = i;
+        if (active_tab < 0) active_tab = i;
     }
 
     add_message_internal(i, text, 0);
 
-    if (i != active_tab)
-        tabs[i].unread = 1;
+    if (i != active_tab) tabs[i].unread = 1;
 }
 
-void draw_input(const char *buf) {
+void draw_input(const char* buf) {
     move(rows, 1);
     printf("\033[0K> %s", buf);
 }
 
-void redraw(const char *input) {
+void redraw(const char* input) {
     cls();
     draw_tabs();
-    if (active_tab >= 0)
-        draw_messages();
+    if (active_tab >= 0) draw_messages();
     draw_input(input);
     fflush(stdout);
 }
@@ -200,8 +183,7 @@ int read_key(void) {
 
     if (r > 0) {
         char c;
-        if (read(STDIN_FILENO, &c, 1) == 1)
-            return c;
+        if (read(STDIN_FILENO, &c, 1) == 1) return c;
     }
 
     return -1;
@@ -211,8 +193,8 @@ int read_key(void) {
 
 void cleanup(void) {
     disable_raw();
-    printf("\033[0m");     // Farben zurücksetzen
-    printf("\033[?25h");   // Cursor anzeigen
+    printf("\033[0m");    // Farben zurücksetzen
+    printf("\033[?25h");  // Cursor anzeigen
     printf("\033[H\n");
     fflush(stdout);
 
@@ -225,7 +207,7 @@ int start_ui() {
 
     enable_raw();
     atexit(cleanup);
-    
+
     signal(SIGINT, handle_sigint);
     signal(SIGTERM, handle_sigint);
 
@@ -236,7 +218,7 @@ int start_ui() {
     while (running) {
         redraw(input);
         int k = read_key();
-        if (k == 3) {   // Ctrl+C = ASCII ETX
+        if (k == 3) {  // Ctrl+C = ASCII ETX
             running = 0;
             break;
         }
@@ -251,10 +233,8 @@ int start_ui() {
         if (k == 27) { /* ESC */
             char seq[2];
             if (read(0, seq, 2) == 2 && seq[0] == '[') {
-                if (seq[1] == 'C' && active_tab < tab_count-1)
-                    active_tab++;
-                if (seq[1] == 'D' && active_tab > 0)
-                    active_tab--;
+                if (seq[1] == 'C' && active_tab < tab_count - 1) active_tab++;
+                if (seq[1] == 'D' && active_tab > 0) active_tab--;
                 tabs[active_tab].unread = 0;
             }
         } else if (k == '\n' && ipos > 0 && active_tab >= 0) {
@@ -264,7 +244,7 @@ int start_ui() {
             input[0] = 0;
         } else if (k == 127 && ipos > 0) {
             input[--ipos] = 0;
-        } else if (k > 31 && k < 127 && ipos < MAX_TEXT-1) {
+        } else if (k > 31 && k < 127 && ipos < MAX_TEXT - 1) {
             input[ipos++] = k;
             input[ipos] = 0;
         }

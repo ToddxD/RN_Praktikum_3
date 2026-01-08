@@ -22,6 +22,7 @@
 
 #include "protocol.h"
 #include "queue.h"
+#include "server.h"  // für epoll
 #include "tcp_con.h"
 
 static bool running = false;
@@ -37,6 +38,17 @@ Connection* get_con(uint64_t addr_port) {
                               (uint16_t)(addr_port & 0xFFFFFFFF));
         con_head->counter = 0;
         con_head->next_item = NULL;
+
+        // Entgegen des Protokolls Verbindungen offen halten. Dadurch kommen Antworten immer am
+        // sender Port an. Diese müssen am epoll registriert werden.
+
+        struct epoll_event event;
+        event.events = EPOLLIN;
+        event.data.fd = con_head->socket_fd;
+        if (epoll_ctl(epoll, EPOLL_CTL_ADD, con_head->socket_fd, &event) < 0) {
+            perror("[Server] couldn't add connection");
+        }
+
         return con_head;
     } else {
         Connection* current = con_head;
@@ -115,7 +127,7 @@ void* sender_loop(void* arg) {
             }
 
             if (con->counter <= 0) {
-                remove_con(dest_addr);
+                // remove_con(dest_addr); // Entgegen des Protokolls Verbindungen offen halten
             }
         }
     }

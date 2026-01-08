@@ -77,7 +77,8 @@ int pop_send(msg_counter_t* msg_counter, uint64_t* dest_addr, char* msg) {
     return size;
 }
 
-int push_send(msg_counter_t msg_counter, const uint64_t dest_addr, const char* msg, size_t msg_len) {
+int push_send(msg_counter_t msg_counter, const uint64_t dest_addr, const char* msg,
+              size_t msg_len) {
     pthread_mutex_lock(&send_queue.queue_mutex);
     if (send_queue.head == NULL) {
         send_queue.head = malloc(sizeof(QueueMessage_SEND));

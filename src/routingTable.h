@@ -15,19 +15,19 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <regex.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 typedef struct __attribute__((packed)) {
     char chatName[32];
     uint32_t adress;
     uint16_t port;
-    char nextChatName[32]; 
+    char nextChatName[32];
     uint32_t nextAdress;
     uint16_t nextPort;
     uint32_t hopCount;
@@ -44,7 +44,6 @@ typedef struct __attribute__((packed)) {
     uint16_t port;
     bool notResponded;
 } user;
-
 
 void initTable(char* ownName, int ownAdress, int ownPort);
 

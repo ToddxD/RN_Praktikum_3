@@ -3,7 +3,7 @@
 
 #define MAX_TABS 10
 #define MAX_MSGS 200
-#define MAX_TEXT (1500-66)
+#define MAX_TEXT (1500 - 66)
 
 typedef struct {
     char text[MAX_TEXT];

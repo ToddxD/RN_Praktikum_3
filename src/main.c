@@ -11,13 +11,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "heartBeat.h"
 #include "protocol.h"
 #include "routingTable.h"
 #include "sender.h"
 #include "server.h"
 #include "tcp_con.h"
 #include "ui.h"
-#include "heartBeat.h"
 
 void* test_thread(void* arg) {
     sleep(2);

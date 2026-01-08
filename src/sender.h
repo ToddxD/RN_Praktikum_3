@@ -14,4 +14,4 @@ void start_sender();
 
 void stop_sender();
 
-#endif // SENDER_H
+#endif  // SENDER_H
