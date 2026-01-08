@@ -71,7 +71,9 @@ void tableUpdate(uint8_t* message, int length) {
     for (int i = 0; i < length / OFFSETMESSAGECOUNT; i++) {
         memcpy(workingArray, message + i * OFFSETMESSAGECOUNT, OFFSETMESSAGECOUNT);
         char charName[32];
+        char charName2[32];
         getName(charName, workingArray + OFFSETCHATNAME);
+        getName(charName2, workingArray + OFFSETNEXTCHATNAME);
         int index = checkNameInTable(charName);
         if (!index) {
             routingTableEntry* newEntry = malloc(sizeof(routingTableEntry));
@@ -83,9 +85,7 @@ void tableUpdate(uint8_t* message, int length) {
             newEntry->adress = adress;
             newEntry->port = (uint16_t)(workingArray[OFFSETPORT] << 8) |
                             (uint16_t)(workingArray[OFFSETPORT + 1]);
-
-            getName(charName, workingArray + OFFSETNEXTCHATNAME);
-            memcpy(newEntry->nextChatName, charName, 32);
+            memcpy(newEntry->nextChatName, charName2, 32);
             newEntry->nextAdress = ((uint32_t)(workingArray[OFFSETNEXTADRESS] << 24)) |
                                   ((uint32_t)(workingArray[OFFSETNEXTADRESS + 1] << 16)) |
                                   ((uint32_t)(workingArray[OFFSETNEXTADRESS + 2] << 8)) |
@@ -100,10 +100,10 @@ void tableUpdate(uint8_t* message, int length) {
             if (freeEntries > 0) {
                 for (int j = 0; j < sizeof(routingTable) / 80; j++) {
                     if( routingTable[j] == NULL){
-                        routingTable[j] = newEntry;
-                        freeEntries--;
                         reachbleTable[j].reachable = 1;
                         memcpy(reachbleTable[j].chatName, charName, 32);
+                        routingTable[j] = newEntry;
+                        freeEntries--;
                         push_ui("<Empfänger hat sich angemeldet!>", newEntry->chatName);
                         break;
                     }
@@ -245,17 +245,26 @@ int deleteFromTable(char* chatName) {
         if(routingTable[i] == NULL){
             continue;
         }
-        if (strcmp(routingTable[i]->nextChatName, chatName) == 0) {
+            if (strcmp(routingTable[i]->chatName, chatName) == 0) {
             reachbleTable[i].reachable = 0;
             free(routingTable[i]);
             routingTable[i] = NULL;
             //memset(&routingTable[i], 0, sizeof(routingTableEntry));
             freeEntries++;
             pthread_mutex_unlock(&tableLock);
-            return 0;
-
+            continue;
+        } else if (strcmp(routingTable[i]->nextChatName, chatName) == 0) {
+            reachbleTable[i].reachable = 0;
+            free(routingTable[i]);
+            routingTable[i] = NULL;
+            //memset(&routingTable[i], 0, sizeof(routingTableEntry));
+            freeEntries++;
+            pthread_mutex_unlock(&tableLock);
+            continue;
         }
     }
+    
+    printRoutingTable();
     pthread_mutex_unlock(&tableLock);
     return -1;
 
