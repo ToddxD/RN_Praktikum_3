@@ -191,8 +191,6 @@ void msg_login(const char* sender, const char* content) {
     // aktualisierte ROUTE message versenden
 
     Header header;
-    protocol_create_header(&header, ownName, sender, TYPE_HEART);
-    push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
 
     protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
     char message[sizeof(Header) + sizeof(ergebnis)];
@@ -200,6 +198,9 @@ void msg_login(const char* sender, const char* content) {
     memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
 
     send_to_all_neighboors(message, "\0", sizeof(message));
+
+    protocol_create_header(&header, ownName, sender, TYPE_HEART);
+    push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
 }
 
 void send_to_all_neighboors(char full_message[], char* skip_sender, int size) {
@@ -279,7 +280,7 @@ void protocol_handle_msg(const int connection) {
     }
 
     if (count == 0) {
-        //close_tcp(connection);
+        // close_tcp(connection);
         free(read_buf);
         return;
     }
