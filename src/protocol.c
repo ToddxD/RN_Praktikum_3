@@ -261,6 +261,8 @@ void msg_heart(const char* sender) {
     printf("Handling heart message\n");
     Header newHeader;
     protocol_create_header(&newHeader, ownName, sender, TYPE_HEARTRESPONSE);
+
+    // TODO erneut versuchen wenn getRouting == 0xFFFFFFF...
     push_send(SINGLE, getRouting(sender), (char*)&newHeader, sizeof(Header));
 }
 
@@ -302,7 +304,7 @@ void protocol_handle_msg(const int connection) {
 
     // Da einige in ihren Route Nachrichten kein Target schreiben und Route Nachrichten eh nie
     // weitergeletet werden, hier abfangen:
-    if (header.type != TYPE_LOGIN && header.type != TYPE_ROUTE && strcmp(target, ownName) != 0) {
+    if (header.type != TYPE_LOGIN && header.type != TYPE_ROUTE && header.type != TYPE_HEARTRESPONSE && strcmp(target, ownName) != 0) {
         forward(target, read_buf);
     } else {
         switch (header.type) {
