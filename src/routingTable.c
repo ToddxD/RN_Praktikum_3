@@ -160,11 +160,14 @@ void tableUpdate(uint8_t* message, int length) {
 void cleanUp() {
     for (int i = 0; i < sizeof(reachbleTable) / sizeof(reachables); i++) {
         if (reachbleTable[i].chatName[0] == '\0') {
-            break;
+            continue;
         }
-        if (reachbleTable[i].reachable == 0) {
+        if (reachbleTable[i].reachable == 0) {  
+            pthread_mutex_unlock(&tableLock);
             deleteFromTable(reachbleTable[i].chatName);
             push_ui("<Empfänger %s nicht erreichbar, aus Routing Tabelle entfernt!>", reachbleTable[i].chatName);
+            reachbleTable[i].chatName[0] = '\0';
+            pthread_mutex_lock(&tableLock);
         } else {
             reachbleTable[i].reachable = 0;
         }
@@ -181,10 +184,10 @@ void getHopsOneAway(user* hopsOneAway) {
             memcpy(hopsOneAway[count].chatName, routingTable[i]->chatName, 32);
             hopsOneAway[count].adress = routingTable[i]->adress;
             hopsOneAway[count].port = routingTable[i]->port;
-            if(hopsOneAway[count].notResponded != 1){
-                hopsOneAway[count].notResponded = 0;
-            } else {
+            if(hopsOneAway[count].notResponded == 1){
                 hopsOneAway[count].notResponded = 1;
+            } else {
+                hopsOneAway[count].notResponded = 0;
             }
             count++;
         }
@@ -274,6 +277,7 @@ int getRoutingTableSize() {
 }
 
 void tableToCharArray(uint8_t* ergebnis) {
+    int count = 0;
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
         if( routingTable[i] == NULL){
             continue;
@@ -283,27 +287,28 @@ void tableToCharArray(uint8_t* ergebnis) {
         }
         uint8_t* name = (uint8_t*)routingTable[i]->chatName;
         for (int j = 0; j < 32; j++) {
-            ergebnis[j + i * 80] = name[j];
+            ergebnis[j + count * 80] = name[j];
         }
-        ergebnis[i * 80 + OFFSETADRESS] = (uint8_t)(routingTable[i]->adress >> 24);
-        ergebnis[i * 80 + OFFSETADRESS + 1] = (uint8_t)(routingTable[i]->adress >> 16);
-        ergebnis[i * 80 + OFFSETADRESS + 2] = (uint8_t)(routingTable[i]->adress >> 8);
-        ergebnis[i * 80 + OFFSETADRESS + 3] = (uint8_t)(routingTable[i]->adress);
-        ergebnis[i * 80 + OFFSETPORT] = (uint8_t)(routingTable[i]->port >> 8);
-        ergebnis[i * 80 + OFFSETPORT + 1] = (uint8_t)(routingTable[i]->port);
+        ergebnis[count * 80 + OFFSETADRESS] = (uint8_t)(routingTable[i]->adress >> 24);
+        ergebnis[count * 80 + OFFSETADRESS + 1] = (uint8_t)(routingTable[i]->adress >> 16);
+        ergebnis[count * 80 + OFFSETADRESS + 2] = (uint8_t)(routingTable[i]->adress >> 8);
+        ergebnis[count * 80 + OFFSETADRESS + 3] = (uint8_t)(routingTable[i]->adress);
+        ergebnis[count * 80 + OFFSETPORT] = (uint8_t)(routingTable[i]->port >> 8);
+        ergebnis[count * 80 + OFFSETPORT + 1] = (uint8_t)(routingTable[i]->port);
         for (int k = 0; k < 32; k++) {
-            ergebnis[OFFSETNEXTCHATNAME + k + i * 80] = routingTable[i]->nextChatName[k];
+            ergebnis[OFFSETNEXTCHATNAME + k + count * 80] = routingTable[i]->nextChatName[k];
         }
-        ergebnis[i * 80 + OFFSETNEXTADRESS] = (uint8_t)(routingTable[i]->nextAdress >> 24);
-        ergebnis[i * 80 + OFFSETNEXTADRESS + 1] = (uint8_t)(routingTable[i]->nextAdress >> 16);
-        ergebnis[i * 80 + OFFSETNEXTADRESS + 2] = (uint8_t)(routingTable[i]->nextAdress >> 8);
-        ergebnis[i * 80 + OFFSETNEXTADRESS + 3] = (uint8_t)(routingTable[i]->nextAdress);
-        ergebnis[i * 80 + OFFSETNEXTPORT] = (uint8_t)(routingTable[i]->nextPort >> 8);
-        ergebnis[i * 80 + OFFSETNEXTPORT + 1] = (uint8_t)(routingTable[i]->nextPort);
-        ergebnis[i * 80 + OFFSETHOPCOUNT] = (uint8_t)(routingTable[i]->hopCount >> 24);
-        ergebnis[i * 80 + OFFSETHOPCOUNT + 1] = (uint8_t)(routingTable[i]->hopCount >> 16);
-        ergebnis[i * 80 + OFFSETHOPCOUNT + 2] = (uint8_t)(routingTable[i]->hopCount >> 8);
-        ergebnis[i * 80 + OFFSETHOPCOUNT + 3] = (uint8_t)(routingTable[i]->hopCount);
+        ergebnis[count * 80 + OFFSETNEXTADRESS] = (uint8_t)(routingTable[i]->nextAdress >> 24);
+        ergebnis[count * 80 + OFFSETNEXTADRESS + 1] = (uint8_t)(routingTable[i]->nextAdress >> 16);
+        ergebnis[count * 80 + OFFSETNEXTADRESS + 2] = (uint8_t)(routingTable[i]->nextAdress >> 8);
+        ergebnis[count * 80 + OFFSETNEXTADRESS + 3] = (uint8_t)(routingTable[i]->nextAdress);
+        ergebnis[count * 80 + OFFSETNEXTPORT] = (uint8_t)(routingTable[i]->nextPort >> 8);
+        ergebnis[count * 80 + OFFSETNEXTPORT + 1] = (uint8_t)(routingTable[i]->nextPort);
+        ergebnis[count * 80 + OFFSETHOPCOUNT] = (uint8_t)(routingTable[i]->hopCount >> 24);
+        ergebnis[count * 80 + OFFSETHOPCOUNT + 1] = (uint8_t)(routingTable[i]->hopCount >> 16);
+        ergebnis[count * 80 + OFFSETHOPCOUNT + 2] = (uint8_t)(routingTable[i]->hopCount >> 8);
+        ergebnis[count * 80 + OFFSETHOPCOUNT + 3] = (uint8_t)(routingTable[i]->hopCount);
+        count++;
     }
 }
 

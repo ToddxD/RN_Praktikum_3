@@ -19,7 +19,6 @@ Users users = { .oneHopaway = {0},
 
 void sendHeartbeatSignal() {
     pthread_mutex_lock(&users.lock);
-    getHopsOneAway(users.oneHopaway);
     for(int i = 0; i< sizeof(users.oneHopaway)/sizeof(user); i++) {
         if(users.oneHopaway[i].chatName[0] == '\0') {
             break;
@@ -42,6 +41,8 @@ void* heartBeatFunction(void* arg) {
         continue;
         }
         pthread_mutex_unlock(&users.lock);
+        memset(users.oneHopaway, 0, sizeof(users.oneHopaway));
+        getHopsOneAway(users.oneHopaway);
          sendHeartbeatSignal();
          usleep(2000*1000);
          pthread_mutex_lock(&users.lock);
@@ -49,7 +50,7 @@ void* heartBeatFunction(void* arg) {
             if(users.oneHopaway[i].chatName[0] == '\0') {
                 break;
             }
-            if(users.oneHopaway[i].notResponded == 1) {
+            if(users.oneHopaway[i].notResponded == 0) {
                 printf("User %s is not responding. Removing from routing table.\n", users.oneHopaway[i].chatName);
                 push_ui("<Empfänger %s nicht erreichbar, aus Routing Tabelle entfernt!>", users.oneHopaway[i].chatName);
                 deleteFromTable(users.oneHopaway[i].chatName);
@@ -72,7 +73,7 @@ void* heartBeatFunction(void* arg) {
                 }
                 
             } else {
-                users.oneHopaway[i].notResponded = 1;
+                users.oneHopaway[i].notResponded = 0;
 
             }
 
@@ -98,7 +99,7 @@ void receiveHeartbeatResponse(const char* senderName) {
     getHopsOneAway(users.oneHopaway);
     for(int i = 0; i < sizeof(users.oneHopaway)/sizeof(user); i++) {
         if(strcmp(users.oneHopaway[i].chatName, senderName) == 0) {
-            users.oneHopaway[i].notResponded = 0;
+            users.oneHopaway[i].notResponded = 1;
             break;
         }
     }
