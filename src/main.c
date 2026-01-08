@@ -147,8 +147,5 @@ int main(int argc, char** argv) {
     startHeartbeatThread();
     start_ui();
 
-    while (1) {
-    }
-
     return 0;
 }
