@@ -66,4 +66,6 @@ void getHopsOneAway(user* hopsOneAway);
 
 int getSizeofRoutingTable();
 
+void cleanUp();
+
 #endif

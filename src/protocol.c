@@ -176,7 +176,7 @@ void msg_login(const char* sender, const char* content) {
     getName((char*)contentNew, (char*)content);
     // Addresse und Port
     memcpy(contentNew + OFFSETADRESS, content + OFFSETADRESS, OFFSETNEXTCHATNAME-OFFSETADRESS);
-    
+
     // Next Name
     getName((char*)contentNew + OFFSETNEXTCHATNAME, (char*)content);
     // Next Name und Port
@@ -190,7 +190,10 @@ void msg_login(const char* sender, const char* content) {
     // sender zur routing tabelle hinzufügen
     // aktualisierte ROUTE message versenden
 
-    Header header;
+	Header header;
+	protocol_create_header(&header, ownName, sender, TYPE_HEART);
+	push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
+
     protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
     char message[sizeof(Header) + sizeof(ergebnis)];
     memcpy(message, &header, sizeof(Header));
@@ -204,11 +207,12 @@ void send_to_all_neighboors(char full_message[], char* skip_sender, int size) {
     memset(hopsOneAway, 0, sizeof(hopsOneAway));
     getHopsOneAway(hopsOneAway);
     int index = 0;
+
     while (hopsOneAway[index].chatName[0] != '\0' &&
            index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
 
         setName(full_message + 34, hopsOneAway[index].chatName); // set target name in header
-        
+
         if (strcmp(hopsOneAway[index].chatName, skip_sender) == 0) {
             // printf("Not sending ROUTE to sender %s\n", sender);
             index++;
@@ -312,7 +316,7 @@ void protocol_handle_msg(const int connection) {
                 msg_logout(sender);
                 break;
             case TYPE_ROUTE:
-                msg_route(sender, content, count - sizeof(Header));
+                msg_route(sender, content, count - sizeof(Header)-1);
                 break;
             case TYPE_HEART:
                 msg_heart(sender);

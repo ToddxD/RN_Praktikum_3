@@ -14,9 +14,9 @@ typedef struct {
     pthread_mutex_t lock;
 } Users;
 
-Users users = {
-    .lock = PTHREAD_MUTEX_INITIALIZER
-};
+Users users = { .oneHopaway = {0},
+    .lock = PTHREAD_MUTEX_INITIALIZER };
+
 void sendHeartbeatSignal() {
     pthread_mutex_lock(&users.lock);
     getHopsOneAway(users.oneHopaway);
@@ -37,13 +37,13 @@ void* heartBeatFunction(void* arg) {
         pthread_mutex_lock(&users.lock);
         getHopsOneAway(users.oneHopaway);
         if(users.oneHopaway[0].chatName[0] == '\0') {
+            pthread_mutex_unlock(&users.lock);
         usleep(1000*1000);
-        pthread_mutex_unlock(&users.lock);
         continue;
         }
         pthread_mutex_unlock(&users.lock);
          sendHeartbeatSignal();
-         usleep(200*1000);
+         usleep(2000*1000);
          pthread_mutex_lock(&users.lock);
         for(int i = 0; i < sizeof(users.oneHopaway)/sizeof(user); i++) {
             if(users.oneHopaway[i].chatName[0] == '\0') {
@@ -54,14 +54,20 @@ void* heartBeatFunction(void* arg) {
                 sprintf(str, "User %s is not responding. Removing from routing table.\n", users.oneHopaway[i].chatName);
                 push_ui(str, users.oneHopaway[i].chatName);
                 deleteFromTable(users.oneHopaway[i].chatName);
+                memset(&users.oneHopaway[i], 0, sizeof(user));
+                // After deletion, send updated ROUTE messages to all one-hop-away users
                 getHopsOneAway(users.oneHopaway);
+                uint8_t tableArray[getSizeofRoutingTable()]; 
+                memset(tableArray, 0, sizeof(tableArray));
+                tableToCharArray(tableArray);
                 int index = 0;
                 while (users.oneHopaway[index].chatName[0] != '\0' &&
                     index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
                      Header header;
                      protocol_create_header(&header, ownName, users.oneHopaway[index].chatName, TYPE_ROUTE);
-                     char fullMessage[sizeof(Header)];
+                     char fullMessage[sizeof(Header) + sizeof(tableArray)];
                      memcpy(fullMessage, &header, sizeof(Header));
+                     memcpy(fullMessage + sizeof(Header), tableArray, sizeof(tableArray));
                     push_send(SINGLE, (getRouting(users.oneHopaway[index].chatName)), fullMessage, sizeof(fullMessage));
                     index++;
                 }
@@ -73,16 +79,13 @@ void* heartBeatFunction(void* arg) {
 
         }
         pthread_mutex_unlock(&users.lock);     
-        usleep(800*1000); 
+        usleep(600*1000); 
     
     }
         return NULL;
 }
 
 void startHeartbeatThread() {
-    pthread_mutex_lock(&users.lock);
-    memset(users.oneHopaway, 0, sizeof(users.oneHopaway));
-    pthread_mutex_unlock(&users.lock);
     pthread_t heartbeatThread;
     if (pthread_create(&heartbeatThread, NULL, heartBeatFunction, NULL) != 0) {
         perror("Failed to create heartbeat thread");
