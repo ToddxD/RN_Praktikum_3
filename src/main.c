@@ -19,7 +19,7 @@
 #include "tcp_con.h"
 #include "ui.h"
 
-void* test_thread(void* arg) {
+/*void* test_thread(void* arg) {
     sleep(2);
 
     int con = CLIENT_connect_to("127.0.1.1", 6969);
@@ -41,7 +41,7 @@ void* test_thread(void* arg) {
     }
 
     return NULL;
-}
+}*/
 
 static void parse_host_port(const char* arg, char* host, size_t host_len, int* port,
                             const char* what) {

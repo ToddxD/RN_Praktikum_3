@@ -16,6 +16,7 @@
 
 #include "protocol_header.h"
 #include "ui.h"
+#include "sender.h"
 
 pthread_mutex_t tableLock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -242,6 +243,7 @@ int getSizeofRoutingTable() {
     return size * OFFSETMESSAGECOUNT;
 }
 int deleteFromTable(char* chatName) {
+    remove_con(getRouting(chatName));
     pthread_mutex_lock(&tableLock);
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
         if (routingTable[i] == NULL) {

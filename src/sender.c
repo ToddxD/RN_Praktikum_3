@@ -26,10 +26,12 @@
 #include "tcp_con.h"
 
 static bool running = false;
+pthread_mutex_t con_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static Connection* con_head = NULL;
 
 Connection* get_con(uint64_t addr_port) {
+    pthread_mutex_lock(&con_mutex);
     if (con_head == NULL) {
         con_head = malloc(sizeof(Connection));
         con_head->addr_port = addr_port;
@@ -49,16 +51,19 @@ Connection* get_con(uint64_t addr_port) {
             perror("[Server] couldn't add connection");
         }
 
+        pthread_mutex_unlock(&con_mutex);
         return con_head;
     } else {
         Connection* current = con_head;
         if (current->addr_port == addr_port) {
+            pthread_mutex_unlock(&con_mutex);
             return current;
         }
 
         while (current->next_item != NULL) {
             current = current->next_item;
             if (current->addr_port == addr_port) {
+                pthread_mutex_unlock(&con_mutex);
                 return current;
             }
         }
@@ -71,11 +76,13 @@ Connection* get_con(uint64_t addr_port) {
         new_con->counter = 0;
         new_con->next_item = NULL;
         current->next_item = new_con;
+        pthread_mutex_unlock(&con_mutex);
         return new_con;
     }
 }
 
 void remove_con(uint64_t addr_port) {
+    pthread_mutex_lock(&con_mutex);
     Connection* current = con_head;
     Connection* prev = NULL;
 
@@ -88,11 +95,36 @@ void remove_con(uint64_t addr_port) {
             }
             close_tcp(current->socket_fd);
             free(current);
+            pthread_mutex_unlock(&con_mutex);
             return;
         }
         prev = current;
         current = current->next_item;
     }
+    pthread_mutex_unlock(&con_mutex);
+}
+
+void remove_con_fd(uint64_t fd) {
+    pthread_mutex_lock(&con_mutex);
+    Connection* current = con_head;
+    Connection* prev = NULL;
+
+    while (current != NULL) {
+        if (current->socket_fd == fd) {
+            if (prev == NULL) {
+                con_head = current->next_item;
+            } else {
+                prev->next_item = current->next_item;
+            }
+            close_tcp(current->socket_fd);
+            free(current);
+            pthread_mutex_unlock(&con_mutex);
+            return;
+        }
+        prev = current;
+        current = current->next_item;
+    }
+    pthread_mutex_unlock(&con_mutex);
 }
 
 void* sender_loop(void* arg) {
@@ -107,7 +139,7 @@ void* sender_loop(void* arg) {
         if (len > 0) {
             Connection* con = get_con(dest_addr);
 
-            switch (msg_counter) {
+            /*switch (msg_counter) {
                 case UP:
                     con->counter++;
                     break;
@@ -120,15 +152,13 @@ void* sender_loop(void* arg) {
                 default:
                     // eigentlich ein Fehler
                     break;
-            }
+            }*/
 
             if (send_tcp(con->socket_fd, msg, len) < 0) {
                 printf("Error sending message to %lu\n", dest_addr);
             }
 
-            if (con->counter <= 0) {
-                // remove_con(dest_addr); // Entgegen des Protokolls Verbindungen offen halten
-            }
+            
         }
     }
 

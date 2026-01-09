@@ -199,6 +199,7 @@ void cleanup(void) {
     fflush(stdout);
 
     do_logout();
+    sleep(1); // damit alle Nachrichten noch rausgehen
 }
 
 int start_ui() {

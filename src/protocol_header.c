@@ -32,5 +32,5 @@ size_t msglen(const char* msg) {
     while (msg[len] != '\004' && len < MSG_SIZE - 1) {
         len++;
     }
-    return len + 1;
+    return len;
 }

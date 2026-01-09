@@ -84,7 +84,7 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
 void do_logout() {
     Header newHeader;
     protocol_create_header(&newHeader, ownName, "\0", TYPE_LOGOUT);
-    char message[MSG_SIZE] = {0};
+    char message[sizeof(Header)] = {0};
 
     memset(message, 0, sizeof(message));
     memcpy(message, &newHeader, sizeof(Header));
@@ -144,11 +144,12 @@ void remove_list(const char* chatName) {
 }
 // -------------------------------------------------------------------
 
-void forward(const char* target, const char* msg) {
+void forward(const char* sender, const char* target, const char* msg) {
     // printf("Forwarding message to %s\n", target);
     uint64_t targetAdresseUndPort = getRouting(target);
     if (targetAdresseUndPort == 0) {
         printf("No route to target %s\n", target);
+        //push_send(SINGLE, getRouting(sender), , ); // TODO Error message senden
         return;
     }
 
@@ -226,7 +227,7 @@ void send_to_all_neighboors(char full_message[], char* skip_sender, int size) {
 void msg_chat(const char* sender, /*const*/ char* content) {
     // printf("Chat from %s: %s\n", sender, content);
     //  auf UI anzeigen
-    content[msglen(content) - 1] = 0;  // EOT entfernen für UI
+    content[msglen(content)] = 0;  // EOT entfernen für UI
     push_ui(content, sender);
 }
 
@@ -245,7 +246,6 @@ void msg_logout(const char* sender) {
     memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
 
     send_to_all_neighboors(message, "\0", sizeof(message));
-
 }
 
 void msg_route(const char* sender, const char* content, int size) {
@@ -317,8 +317,10 @@ void protocol_handle_msg(const int connection) {
 
     // Da einige in ihren Route Nachrichten kein Target schreiben und Route Nachrichten eh nie
     // weitergeletet werden, hier abfangen:
-    if (header.type != TYPE_LOGIN && header.type != TYPE_ROUTE && header.type != TYPE_HEARTRESPONSE && strcmp(target, ownName) != 0) {
-        forward(target, read_buf);
+    if (header.type != TYPE_LOGIN && header.type != TYPE_ROUTE &&
+        header.type != TYPE_HEARTRESPONSE && header.type != TYPE_LOGOUT &&
+        strcmp(target, ownName) != 0) {
+        forward(sender, target, read_buf);
     } else {
         switch (header.type) {
             case TYPE_LOGIN:

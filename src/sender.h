@@ -14,4 +14,8 @@ void start_sender();
 
 void stop_sender();
 
+void remove_con_fd(uint64_t fd);
+
+void remove_con(uint64_t addr_port);
+
 #endif  // SENDER_H
