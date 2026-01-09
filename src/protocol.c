@@ -231,8 +231,21 @@ void msg_chat(const char* sender, /*const*/ char* content) {
 }
 
 void msg_logout(const char* sender) {
-    // sender aus routing tabelle entfernen (disconnect)
     push_ui("<Empfänger hat sich abgemeldet!>", sender);
+    deleteFromTable(sender);
+    uint8_t ergebnis[getRoutingTableSize()];
+    memset(ergebnis, 0, sizeof(ergebnis));
+    tableToCharArray(ergebnis);
+    // sender zur routing tabelle hinzufügen
+    // aktualisierte ROUTE message versenden
+    Header header;
+    protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
+    char message[sizeof(Header) + sizeof(ergebnis)];
+    memcpy(message, &header, sizeof(Header));
+    memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
+
+    send_to_all_neighboors(message, "\0", sizeof(message));
+
 }
 
 void msg_route(const char* sender, const char* content, int size) {
