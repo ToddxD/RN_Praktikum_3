@@ -102,25 +102,101 @@ void draw_tabs(void) {
     }
 }
 
+int message_lines(const char *text, int max_width) {
+    int lines = 1;
+    int col = 0;
+
+    for (const char *p = text; *p; p++) {
+        if (*p == '\n') {
+            lines++;
+            col = 0;
+        } else {
+            col++;
+            if (col >= max_width) {
+                lines++;
+                col = 0;
+            }
+        }
+    }
+    return lines;
+}
+
+static int first_visible_message(Tab *t, int max_width, int chat_height) {
+    int used = 0;
+    int visible = 0;
+
+    for (int i = t->msg_count - 1; i >= 0; i--) {
+        int lines = message_lines(t->msgs[i].text, max_width);
+
+        /* Platzbedarf dieser Nachricht */
+        int need = lines;
+        if (visible > 1)
+            //need += 1;  // Abstand nur zwischen Nachrichten
+
+        if (used + need >= chat_height)
+            break;
+
+        used += need;
+        visible++;
+    }
+
+    return t->msg_count - visible;
+}
+
+static int draw_message(int line, int cols, Message *m) {
+    int max_width = cols - 2;
+    const char *p = m->text;
+
+    color(m->self ? "\033[32m" : "\033[34m");
+
+    while (*p) {
+        char buf[1024];
+        int len = 0;
+
+        /* Eine sichtbare Zeile extrahieren */
+        while (*p && *p != '\n' && len < max_width) {
+            buf[len++] = *p++;
+        }
+
+        /* Überspringe expliziten Zeilenumbruch */
+        if (*p == '\n')
+            p++;
+
+        /* WICHTIG: leere Zeilen NICHT zeichnen */
+        if (len > 0) {
+            buf[len] = 0;
+
+            int col = m->self ? (cols - len - 1) : 1;
+            if (col < 1) col = 1;
+
+            move(line, col);
+            printf("%s", buf);
+            line++;
+        }
+    }
+
+    color("\033[0m");
+    return line;
+}
+
 void draw_messages(void) {
-    Tab* t = &tabs[active_tab];
+    Tab *t = &tabs[active_tab];
+    int chat_height = rows - 3;
+    int max_width = cols - 2;
+
+    int start = first_visible_message(t, max_width, chat_height);
     int line = 3;
 
-    for (int i = 0; i < t->msg_count && line < rows - 2; i++) {
-        Message* m = &t->msgs[i];
-        int len = strlen(m->text);
+    for (int i = start; i < t->msg_count && line < rows - 1; i++) {
+        line = draw_message(line, cols, &t->msgs[i]);
 
-        if (m->self) {
-            color("\033[32m");
-            move(line++, cols - len - 1);
-        } else {
-            color("\033[34m");
-            move(line++, 1);
+        /* Abstand nur zwischen Nachrichten, nicht nach der letzten */
+        if (i + 1 < t->msg_count && line < rows - 1) {
+            //line++;
         }
-        printf("%s", m->text);
-        color("\033[0m");
     }
 }
+
 
 static void add_message_internal(int tab, const char* text, int self) {
     Tab* t = &tabs[tab];
