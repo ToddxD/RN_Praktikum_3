@@ -66,7 +66,7 @@ int checkNameNotInMessage(uint8_t* message, char* chatName) {
     return 1;
 }
 
-void tableUpdate(char* sender, uint8_t* message, int length) {
+void tableUpdate(uint8_t* message, int length) {
     pthread_mutex_lock(&tableLock);
     uint8_t workingArray[OFFSETMESSAGECOUNT];
     memset(workingArray, 0, OFFSETMESSAGECOUNT);
@@ -74,8 +74,8 @@ void tableUpdate(char* sender, uint8_t* message, int length) {
         memcpy(workingArray, message + i * OFFSETMESSAGECOUNT, OFFSETMESSAGECOUNT);
         char charName[32];
         char charName2[32];
-        getName(charName, workingArray + OFFSETCHATNAME);
-        getName(charName2, workingArray + OFFSETNEXTCHATNAME);
+        getName(charName, (char*) workingArray + OFFSETCHATNAME);
+        getName(charName2, (char*) workingArray + OFFSETNEXTCHATNAME);
         int index = checkNameInTable(charName);
         if (!index) {
             routingTableEntry* newEntry = malloc(sizeof(routingTableEntry));
@@ -208,7 +208,7 @@ char* getChatName(uint64_t adressUndPort) {
     return NULL;
 }
 
-uint64_t getRouting(char* chatName) {
+uint64_t getRouting(const char* chatName) {
     pthread_mutex_lock(&tableLock);
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
         if (routingTable[i] == NULL) {
@@ -242,7 +242,7 @@ int getSizeofRoutingTable() {
     }
     return size * OFFSETMESSAGECOUNT;
 }
-int deleteFromTable(char* chatName) {
+int deleteFromTable(const char* chatName) {
     remove_con(getRouting(chatName));
     pthread_mutex_lock(&tableLock);
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {

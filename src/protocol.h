@@ -12,6 +12,6 @@ void do_logout();
 
 void protocol_handle_msg(const int connection);
 
-void send_to_all_neighboors(char full_message[], char* skip_sender, int size);
+void send_to_all_neighboors(char full_message[], const char* skip_sender, int size);
 
 #endif  // PROTOCOL_H

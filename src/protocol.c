@@ -47,8 +47,7 @@ void do_chat(const char* target, const char* msg) {
     message[offset] = EOT;
 
     uint64_t targetAdresseUndPort = getRouting(target);
-    push_send(SINGLE, targetAdresseUndPort, message,
-              msglen(message));
+    push_send(SINGLE, targetAdresseUndPort, message, msglen(message));
 }
 
 void do_login(const char* chat_name, const char* local_host, const int local_port,
@@ -149,7 +148,7 @@ void forward(const char* sender, const char* target, const char* msg) {
     uint64_t targetAdresseUndPort = getRouting(target);
     if (targetAdresseUndPort == 0) {
         printf("No route to target %s\n", target);
-        //push_send(SINGLE, getRouting(sender), , ); // TODO Error message senden
+        // push_send(SINGLE, getRouting(sender), , ); // TODO Error message senden
         return;
     }
 
@@ -179,7 +178,7 @@ void msg_login(const char* sender, const char* content) {
            OFFSETNEXTCHATNAME - OFFSETADRESS);
 
     contentNew[OFFSETHOPCOUNT] = 0;  // hop count auf 0 setzen
-    tableUpdate(sender, contentNew, sizeof(contentNew));
+    tableUpdate(contentNew, sizeof(contentNew));
     uint8_t ergebnis[getRoutingTableSize()];
     memset(ergebnis, 0, sizeof(ergebnis));
     tableToCharArray(ergebnis);
@@ -197,7 +196,7 @@ void msg_login(const char* sender, const char* content) {
     push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
 }
 
-void send_to_all_neighboors(char full_message[], char* skip_sender, int size) {
+void send_to_all_neighboors(char full_message[], const char* skip_sender, int size) {
     user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
     memset(hopsOneAway, 0, sizeof(hopsOneAway));
     getHopsOneAway(hopsOneAway);
@@ -239,7 +238,7 @@ void msg_logout(const char* sender) {
 }
 
 void msg_route(const char* sender, const char* content, int size) {
-    tableUpdate(sender, (uint8_t*)content, size);
+    tableUpdate((uint8_t*)content, size);
 
     // printf("Handling route message\n");
     uint8_t message[getRoutingTableSize()];
@@ -329,11 +328,11 @@ void protocol_handle_msg(const int connection) {
             case TYPE_ERROR:
                 msg_error(sender);
                 break;
-            default:
-                printf("");  // Das muss so...
+            default: {
                 char unknownMsg[40] = {0};
                 sprintf(unknownMsg, "[Server] Unknown message type: %d\n", header.type);
                 push_ui(unknownMsg, "System");
+            }
         }
     }
 

@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-void getName(char* dest, char* src) {
+void getName(char* dest, const char* src) {
     int count = NAME_LEN;
     for (int i = 0; i < NAME_LEN && *src == 0; i++) {
         src++;

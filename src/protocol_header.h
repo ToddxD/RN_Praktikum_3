@@ -23,7 +23,7 @@ typedef struct __attribute__((packed)) {
     char targetname[NAME_LEN];
 } Header;
 
-void getName(char* dest, char* src);
+void getName(char* dest, const char* src);
 
 void setName(char* dest, const char* src);
 

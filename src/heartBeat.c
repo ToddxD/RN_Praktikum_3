@@ -16,7 +16,11 @@ typedef struct {
     pthread_mutex_t lock;
 } Users;
 
-Users users = {.oneHopaway = {0}, .lock = PTHREAD_MUTEX_INITIALIZER};
+Users users = {0};
+
+void __attribute__((constructor)) init_users() {
+    pthread_mutex_init(&users.lock, NULL);
+}
 
 void sendHeartbeatSignal() {
     pthread_mutex_lock(&users.lock);

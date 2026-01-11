@@ -49,11 +49,11 @@ void initTable(char* ownName, int ownAdress, int ownPort);
 
 int checkNameInTable(char* chatName);
 
-void tableUpdate(char* sender, uint8_t* message, int length);
+void tableUpdate(uint8_t* message, int length);
 
-uint64_t getRouting(char* chatName);
+uint64_t getRouting(const char* chatName);
 
-int deleteFromTable(char* chatName);
+int deleteFromTable(const char* chatName);
 
 void tableToCharArray(uint8_t* ergebnis);
 
