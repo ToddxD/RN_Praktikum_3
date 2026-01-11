@@ -49,7 +49,7 @@ void initTable(char* ownName, int ownAdress, int ownPort);
 
 int checkNameInTable(char* chatName);
 
-void tableUpdate(uint8_t* message, int length);
+void tableUpdate(char* sender, uint8_t* message, int length);
 
 uint64_t getRouting(char* chatName);
 
