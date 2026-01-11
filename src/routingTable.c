@@ -306,14 +306,17 @@ int getRoutingTableSize() {
     return result;
 }
 
-void putNameAtBack(uint8_t* dest, const uint8_t* name, int len) {
+void putNameAtBack(uint8_t dest[32], const char name[32], int len) {
     for (int i = 0; i < len; i++) {
-        dest[i+32-len] = name[i];
+        dest[i+31-len] = name[i];
+        //dest[i] = 0;
     }
 }
 
 void tableToCharArray(uint8_t* ergebnis) {
     int count = 0;
+    uint8_t name[32] = {0};
+    uint8_t nextName[32] = {0};
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
         if (routingTable[i] == NULL) {
             continue;
@@ -321,9 +324,10 @@ void tableToCharArray(uint8_t* ergebnis) {
         if (routingTable[i]->hopCount == 0 && strcmp(routingTable[i]->chatName, "") == 0) {
             continue;
         }
-        uint8_t* name = (uint8_t*)routingTable[i]->chatName;
-        name[strlen(routingTable[i]->chatName)] = 0;
-        putNameAtBack(name, name, strlen(routingTable[i]->chatName));
+        //name[strlen(routingTable[i]->chatName)] = 0;
+        memset(name, 0, 32);
+        memset(nextName, 0, 32);
+        putNameAtBack(name, routingTable[i]->chatName, strlen(routingTable[i]->chatName));
         for (int j = 0; j < 32; j++) {
             ergebnis[j + count * 80] = name[j];
         }
@@ -333,9 +337,9 @@ void tableToCharArray(uint8_t* ergebnis) {
         ergebnis[count * 80 + OFFSETADRESS + 3] = (uint8_t)(routingTable[i]->adress);
         ergebnis[count * 80 + OFFSETPORT] = (uint8_t)(routingTable[i]->port >> 8);
         ergebnis[count * 80 + OFFSETPORT + 1] = (uint8_t)(routingTable[i]->port);
-        uint8_t* nextName = (uint8_t*)routingTable[i]->nextChatName;
-        name[strlen(routingTable[i]->chatName)] = 0;
-        putNameAtBack(name, name, strlen(routingTable[i]->chatName));
+        //uint8_t* nextName = (uint8_t*)routingTable[i]->nextChatName;
+        //name[strlen(routingTable[i]->chatName)] = 0;
+        putNameAtBack(nextName, routingTable[i]->nextChatName, strlen(routingTable[i]->nextChatName));
         for (int k = 0; k < 32; k++) {
             ergebnis[OFFSETNEXTCHATNAME + k + count * 80] = nextName[k];
         }

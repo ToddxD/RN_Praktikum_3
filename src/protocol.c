@@ -56,7 +56,7 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
     Header newHeader;
     int offset = 0;
     protocol_create_header(&newHeader, ownName, "", TYPE_LOGIN);
-    char message[MSG_SIZE] = {0};
+    uint8_t message[MSG_SIZE] = {0};
     memset(message, 0, sizeof(message));
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
