@@ -43,7 +43,7 @@ int pop_ui(char* text_buf, char* name_buf);
 
 int push_ui(const char* text_buf, const char* name_buf);
 
-int pop_send(msg_counter_t* msg_counter, uint64_t* dest_addr, char* msg);
+int pop_send(msg_counter_t* msg_counter, uint64_t* dest_addr, uint8_t* msg);
 
 int push_send(msg_counter_t msg_counter, const uint64_t dest_addr, const uint8_t* msg, size_t msg_len);
 

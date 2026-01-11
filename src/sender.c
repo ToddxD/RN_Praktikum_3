@@ -131,7 +131,7 @@ void* sender_loop(void* arg) {
     running = true;
 
     while (running) {
-        char msg[MSG_SIZE];
+        uint8_t msg[MSG_SIZE];
         uint64_t dest_addr;
         msg_counter_t msg_counter;
 

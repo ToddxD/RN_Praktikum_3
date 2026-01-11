@@ -57,7 +57,7 @@ int push_ui(const char* text_buf, const char* name_buf) {
     return 0;
 }
 
-int pop_send(msg_counter_t* msg_counter, uint64_t* dest_addr, char* msg) {
+int pop_send(msg_counter_t* msg_counter, uint64_t* dest_addr, uint8_t* msg) {
     pthread_mutex_lock(&send_queue.queue_mutex);
 
     if (send_queue.head == NULL) {
