@@ -21,8 +21,8 @@
 #include <unistd.h>
 
 #include "protocol.h"
-#include "tcp_con.h"
 #include "sender.h"
+#include "tcp_con.h"
 
 #define MAX_EVENTS 20  // maximal 20 Clients gleichzeitig
 
@@ -58,7 +58,7 @@ void* server_loop(void* arg) {
         for (int i = 0; i < event_count; i++) {
             if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) ||
                 (!(events[i].events & EPOLLIN))) {
-                printf("[Server] epoll error\n");
+                // printf("[Server] epoll error\n");
                 remove_con_fd(events[i].data.fd);
             } else if (events[i].data.fd == server_socket) {  // Event kommt vom Socket
                 struct sockaddr_in con_addr;

@@ -73,9 +73,9 @@ void tableUpdate(char* sender, uint8_t* message, int length) {
     for (int i = 0; i < length / OFFSETMESSAGECOUNT; i++) {
         memcpy(workingArray, message + i * OFFSETMESSAGECOUNT, OFFSETMESSAGECOUNT);
         char charName[32];
-        //char charName2[32];
+        char charName2[32];
         getName(charName, workingArray + OFFSETCHATNAME);
-        //getName(charName2, workingArray + OFFSETNEXTCHATNAME); --> TODO natürlich auch adresse ändern
+        getName(charName2, workingArray + OFFSETNEXTCHATNAME);
         int index = checkNameInTable(charName);
         if (!index) {
             routingTableEntry* newEntry = malloc(sizeof(routingTableEntry));
@@ -87,7 +87,7 @@ void tableUpdate(char* sender, uint8_t* message, int length) {
             newEntry->adress = adress;
             newEntry->port = (uint16_t)(workingArray[OFFSETPORT] << 8) |
                              (uint16_t)(workingArray[OFFSETPORT + 1]);
-            memcpy(newEntry->nextChatName, sender, 32);
+            memcpy(newEntry->nextChatName, charName2, 32);
             newEntry->nextAdress = ((uint32_t)(workingArray[OFFSETNEXTADRESS] << 24)) |
                                    ((uint32_t)(workingArray[OFFSETNEXTADRESS + 1] << 16)) |
                                    ((uint32_t)(workingArray[OFFSETNEXTADRESS + 2] << 8)) |
@@ -129,7 +129,7 @@ void tableUpdate(char* sender, uint8_t* message, int length) {
                                (uint32_t)(workingArray[OFFSETHOPCOUNT + 2] << 8) |
                                (uint32_t)(workingArray[OFFSETHOPCOUNT + 3])) +
                               1)) {
-            memcpy(routingTable[index - 1]->nextChatName, sender, 32);
+            memcpy(routingTable[index - 1]->nextChatName, workingArray + OFFSETNEXTCHATNAME, 32);
             routingTable[index - 1]->nextAdress =
                 (uint32_t)(workingArray[OFFSETNEXTADRESS] << 24) |
                 (uint32_t)(workingArray[OFFSETNEXTADRESS + 1] << 16) |
