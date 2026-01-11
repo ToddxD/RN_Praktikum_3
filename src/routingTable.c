@@ -325,6 +325,7 @@ void tableToCharArray(uint8_t* ergebnis) {
         ergebnis[count * 80 + OFFSETADRESS + 3] = (uint8_t)(routingTable[i]->adress);
         ergebnis[count * 80 + OFFSETPORT] = (uint8_t)(routingTable[i]->port >> 8);
         ergebnis[count * 80 + OFFSETPORT + 1] = (uint8_t)(routingTable[i]->port);
+        uint8_t* name = (uint8_t*)routingTable[i]->nextChatName;
         for (int k = 0; k < 32; k++) {
             ergebnis[OFFSETNEXTCHATNAME + k + count * 80] = routingTable[i]->nextChatName[k];
         }
