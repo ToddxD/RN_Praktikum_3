@@ -178,7 +178,7 @@ void msg_login(const char* sender, const char* content) {
            OFFSETNEXTCHATNAME - OFFSETADRESS);
 
     contentNew[OFFSETHOPCOUNT] = 0;  // hop count auf 0 setzen
-    tableUpdate(contentNew, sizeof(contentNew));
+    tableUpdate(contentNew, sizeof(contentNew), sender);
     uint8_t ergebnis[getRoutingTableSize()];
     memset(ergebnis, 0, sizeof(ergebnis));
     tableToCharArray(ergebnis);
@@ -238,7 +238,7 @@ void msg_logout(const char* sender) {
 }
 
 void msg_route(const char* sender, const char* content, int size) {
-    tableUpdate((uint8_t*)content, size);
+    tableUpdate((uint8_t*)content, size, sender);
 
     // printf("Handling route message\n");
     uint8_t message[getRoutingTableSize()];
