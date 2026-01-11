@@ -42,13 +42,13 @@ void do_chat(const char* target, const char* msg) {
     char message[MSG_SIZE] = {0};
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
-    strcpy(message + offset, msg);  // TODO msg fragmentieren, wenn zu lang
+    strcpy(message + offset, msg);
     offset += strlen(msg);
     message[offset] = EOT;
 
     uint64_t targetAdresseUndPort = getRouting(target);
     push_send(SINGLE, targetAdresseUndPort, message,
-              msglen(message));  // TODO SINGLE zu UP/DOWN, wenn fragmentiert
+              msglen(message));
 }
 
 void do_login(const char* chat_name, const char* local_host, const int local_port,
@@ -161,11 +161,6 @@ void forward(const char* sender, const char* target, const char* msg) {
         push_send(DOWN, targetAdresseUndPort, msg, msglen(msg));
         remove_list(target);
     }
-
-    // TODO \004 wahrscheinlich noch an msg anhängen
-    // target in routing tabelle suchen
-    // gesamte Nachricht (msg) an target aus routing tabelle senden
-    // keine Heart und heartresponse weiterleiten (sollte hier gar nicht ankommen)
 }
 
 void msg_login(const char* sender, const char* content) {
@@ -188,8 +183,6 @@ void msg_login(const char* sender, const char* content) {
     uint8_t ergebnis[getRoutingTableSize()];
     memset(ergebnis, 0, sizeof(ergebnis));
     tableToCharArray(ergebnis);
-    // sender zur routing tabelle hinzufügen
-    // aktualisierte ROUTE message versenden
 
     Header header;
 
@@ -226,7 +219,6 @@ void send_to_all_neighboors(char full_message[], char* skip_sender, int size) {
 
 void msg_chat(const char* sender, /*const*/ char* content) {
     // printf("Chat from %s: %s\n", sender, content);
-    //  auf UI anzeigen
     content[msglen(content)] = 0;  // EOT entfernen für UI
     push_ui(content, sender);
 }
@@ -237,8 +229,6 @@ void msg_logout(const char* sender) {
     uint8_t ergebnis[getRoutingTableSize()];
     memset(ergebnis, 0, sizeof(ergebnis));
     tableToCharArray(ergebnis);
-    // sender zur routing tabelle hinzufügen
-    // aktualisierte ROUTE message versenden
     Header header;
     protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
     char message[sizeof(Header) + sizeof(ergebnis)];
@@ -263,11 +253,6 @@ void msg_route(const char* sender, const char* content, int size) {
     memcpy(fullMessage + sizeof(Header), message, sizeof(message));
 
     send_to_all_neighboors(fullMessage, sender, sizeof(fullMessage));
-    // hop counts erhöhen
-    // eigene routing tabelle mit neuen Daten aktualisieren
-    // aktualisierte ROUTE message versenden
-
-    // printRoutingTable();
 }
 
 void msg_heart(const char* sender) {

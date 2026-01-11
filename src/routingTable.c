@@ -15,7 +15,7 @@
 #include <unistd.h>
 
 #include "protocol_header.h"
-#include "ui.h"
+#include "queue.h"
 #include "sender.h"
 
 pthread_mutex_t tableLock = PTHREAD_MUTEX_INITIALIZER;
