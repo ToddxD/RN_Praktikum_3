@@ -306,6 +306,12 @@ int getRoutingTableSize() {
     return result;
 }
 
+void putNameAtBack(uint8_t* dest, const uint8_t* name, int len) {
+    for (int i = 0; i < len; i++) {
+        dest[i+32-len] = name[i];
+    }
+}
+
 void tableToCharArray(uint8_t* ergebnis) {
     int count = 0;
     for (int i = 0; i < sizeof(routingTable) / 80; i++) {
@@ -317,6 +323,7 @@ void tableToCharArray(uint8_t* ergebnis) {
         }
         uint8_t* name = (uint8_t*)routingTable[i]->chatName;
         name[strlen(routingTable[i]->chatName)] = 0;
+        putNameAtBack(name, name, strlen(routingTable[i]->chatName));
         for (int j = 0; j < 32; j++) {
             ergebnis[j + count * 80] = name[j];
         }
@@ -327,7 +334,8 @@ void tableToCharArray(uint8_t* ergebnis) {
         ergebnis[count * 80 + OFFSETPORT] = (uint8_t)(routingTable[i]->port >> 8);
         ergebnis[count * 80 + OFFSETPORT + 1] = (uint8_t)(routingTable[i]->port);
         uint8_t* nextName = (uint8_t*)routingTable[i]->nextChatName;
-        nextName[strlen(routingTable[i]->nextChatName)] = 0;
+        name[strlen(routingTable[i]->chatName)] = 0;
+        putNameAtBack(name, name, strlen(routingTable[i]->chatName));
         for (int k = 0; k < 32; k++) {
             ergebnis[OFFSETNEXTCHATNAME + k + count * 80] = nextName[k];
         }
