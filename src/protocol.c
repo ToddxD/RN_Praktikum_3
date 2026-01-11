@@ -186,7 +186,7 @@ void msg_login(const char* sender, const char* content) {
     Header header;
 
     protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
-    char message[sizeof(Header) + sizeof(ergebnis)];
+    uint8_t message[sizeof(Header) + sizeof(ergebnis)];
     memcpy(message, &header, sizeof(Header));
     memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
 
@@ -196,7 +196,7 @@ void msg_login(const char* sender, const char* content) {
     push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
 }
 
-void send_to_all_neighboors(char full_message[], const char* skip_sender, int size) {
+void send_to_all_neighboors(uint8_t full_message[], const char* skip_sender, int size) {
     user hopsOneAway[getRoutingTableSize() / OFFSETMESSAGECOUNT];
     memset(hopsOneAway, 0, sizeof(hopsOneAway));
     getHopsOneAway(hopsOneAway);

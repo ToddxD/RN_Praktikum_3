@@ -1,6 +1,8 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+
+#include <stdint.h>
 extern char ownName[32];
 
 void do_chat(const char* target, const char* msg);
@@ -12,6 +14,6 @@ void do_logout();
 
 void protocol_handle_msg(const int connection);
 
-void send_to_all_neighboors(char full_message[], const char* skip_sender, int size);
+void send_to_all_neighboors(uint8_t full_message[], const char* skip_sender, int size);
 
 #endif  // PROTOCOL_H

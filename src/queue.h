@@ -2,6 +2,7 @@
 #define QUEUE_H
 
 #include <pthread.h>
+#include <stdint.h>
 
 #include "protocol_header.h"
 
@@ -44,6 +45,6 @@ int push_ui(const char* text_buf, const char* name_buf);
 
 int pop_send(msg_counter_t* msg_counter, uint64_t* dest_addr, char* msg);
 
-int push_send(msg_counter_t msg_counter, const uint64_t dest_addr, const char* msg, size_t msg_len);
+int push_send(msg_counter_t msg_counter, const uint64_t dest_addr, const uint8_t* msg, size_t msg_len);
 
 #endif  // QUEUE_H
