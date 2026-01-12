@@ -47,7 +47,7 @@ void do_chat(const char* target, const char* msg) {
     message[offset] = EOT;
 
     uint64_t targetAdresseUndPort = getRouting(target);
-    push_send(SINGLE, targetAdresseUndPort, message, msglen(message));
+    push_send(SINGLE, targetAdresseUndPort, (uint8_t*)message, msglen((uint8_t*)message));
 }
 
 void do_login(const char* chat_name, const char* local_host, const int local_port,
@@ -60,7 +60,7 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
     memset(message, 0, sizeof(message));
     memcpy(message + offset, &newHeader, sizeof(Header));
     offset += sizeof(Header);
-    getName(message + offset, chat_name);
+    getName((char*) message + offset, chat_name);
     offset += NAME_LEN;
 
     struct in_addr local_addr;
@@ -83,7 +83,7 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
 void do_logout() {
     Header newHeader;
     protocol_create_header(&newHeader, ownName, "\0", TYPE_LOGOUT);
-    char message[sizeof(Header)] = {0};
+    uint8_t message[sizeof(Header)] = {0};
 
     memset(message, 0, sizeof(message));
     memcpy(message, &newHeader, sizeof(Header));
@@ -153,11 +153,11 @@ void forward(const char* sender, const char* target, const char* msg) {
     }
 
     if (!add_list(target)) {
-        push_send(UP, targetAdresseUndPort, msg, msglen(msg));
-    } else if (memchr(msg, '\004', msglen(msg)) == NULL) {
-        push_send(KEEP, targetAdresseUndPort, msg, msglen(msg));
+        push_send(UP, targetAdresseUndPort, (uint8_t*)msg, msglen((uint8_t*)msg));
+    } else if (memchr(msg, '\004', msglen((uint8_t*)msg)) == NULL) {
+        push_send(KEEP, targetAdresseUndPort, (uint8_t*)msg, msglen((uint8_t*)msg));
     } else {
-        push_send(DOWN, targetAdresseUndPort, msg, msglen(msg));
+        push_send(DOWN, targetAdresseUndPort, (uint8_t*)msg, msglen((uint8_t*)msg));
         remove_list(target);
     }
 }
@@ -193,7 +193,7 @@ void msg_login(const char* sender, const char* content) {
     send_to_all_neighboors(message, "\0", sizeof(message));
     usleep(10* 1000);  // 0.1s warten, damit Route Nachricht vorher ankommt
     protocol_create_header(&header, ownName, sender, TYPE_HEART);
-    push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
+    push_send(SINGLE, getRouting(sender), (uint8_t*)&header, sizeof(Header));
 }
 
 void send_to_all_neighboors(uint8_t full_message[], const char* skip_sender, int size) {
@@ -204,7 +204,7 @@ void send_to_all_neighboors(uint8_t full_message[], const char* skip_sender, int
 
     while (hopsOneAway[index].chatName[0] != '\0' &&
            index < (getRoutingTableSize() / OFFSETMESSAGECOUNT)) {
-        setName(full_message + 34, hopsOneAway[index].chatName);  // set target name in header
+        setName((char*)full_message + 34, hopsOneAway[index].chatName);  // set target name in header
 
         if (strcmp(hopsOneAway[index].chatName, skip_sender) == 0) {
             // printf("Not sending ROUTE to sender %s\n", sender);
@@ -218,7 +218,7 @@ void send_to_all_neighboors(uint8_t full_message[], const char* skip_sender, int
 
 void msg_chat(const char* sender, /*const*/ char* content) {
     // printf("Chat from %s: %s\n", sender, content);
-    content[msglen(content)] = 0;  // EOT entfernen für UI
+    content[msglen((uint8_t*)content)] = 0;  // EOT entfernen für UI
     push_ui(content, sender);
 }
 
@@ -230,7 +230,7 @@ void msg_logout(const char* sender) {
     tableToCharArray(ergebnis);
     Header header;
     protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
-    char message[sizeof(Header) + sizeof(ergebnis)];
+    uint8_t message[sizeof(Header) + sizeof(ergebnis)];
     memcpy(message, &header, sizeof(Header));
     memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
 
@@ -247,7 +247,7 @@ void msg_route(const char* sender, const char* content, int size) {
 
     Header header;
     protocol_create_header(&header, ownName, "\0", TYPE_ROUTE);
-    char fullMessage[sizeof(Header) + sizeof(message)];
+    uint8_t fullMessage[sizeof(Header) + sizeof(message)];
     memcpy(fullMessage, &header, sizeof(Header));
     memcpy(fullMessage + sizeof(Header), message, sizeof(message));
 
@@ -260,7 +260,7 @@ void msg_heart(const char* sender) {
     protocol_create_header(&newHeader, ownName, sender, TYPE_HEARTRESPONSE);
 
     // TODO erneut versuchen wenn getRouting == 0xFFFFFFF...
-    push_send(SINGLE, getRouting(sender), (char*)&newHeader, sizeof(Header));
+    push_send(SINGLE, getRouting(sender), (uint8_t*)&newHeader, sizeof(Header));
 }
 
 void msg_heartresponse(const char* sender) { receiveHeartbeatResponse(sender); }

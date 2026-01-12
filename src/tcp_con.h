@@ -2,6 +2,7 @@
 #define TCP_CON_H
 
 #include <unistd.h>
+#include <stdint.h>
 
 #define BUF_SIZE 1500
 #define MAX_READ 5
@@ -38,7 +39,7 @@ int SERVER_listen_on(const char* ip_str, int port);
  *
  * @return -1 on error
  */
-int send_tcp(int socket_fd, char* buf, size_t size);
+int send_tcp(int socket_fd, uint8_t* buf, size_t size);
 
 /**
  * Reads a maxium of BUF_SIZE * MAX_READ bytes from the TCP socket.

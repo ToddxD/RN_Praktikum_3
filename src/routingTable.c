@@ -66,7 +66,7 @@ int checkNameNotInMessage(uint8_t* message, char* chatName) {
     return 1;
 }
 
-void tableUpdate(uint8_t* message, int length, char* sender) {
+void tableUpdate(uint8_t* message, int length, const char* sender) {
     char charName[32] = {0};
     char charName2[32] = {0};
     pthread_mutex_lock(&tableLock);

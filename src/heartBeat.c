@@ -31,7 +31,7 @@ void sendHeartbeatSignal() {
         Header header;
         memset(&header, 0, sizeof(Header));
         protocol_create_header(&header, ownName, users.oneHopaway[i].chatName, TYPE_HEART);
-        push_send(SINGLE, getRouting(users.oneHopaway[i].chatName), (char*)&header, sizeof(Header));
+        push_send(SINGLE, getRouting(users.oneHopaway[i].chatName), (uint8_t*)&header, sizeof(Header));
     }
     pthread_mutex_unlock(&users.lock);
 }
@@ -74,7 +74,7 @@ void* heartBeatFunction(void* arg) {
                     Header header;
                     protocol_create_header(&header, ownName, users.oneHopaway[index].chatName,
                                            TYPE_ROUTE);
-                    char fullMessage[sizeof(Header) + sizeof(tableArray)];
+                    uint8_t fullMessage[sizeof(Header) + sizeof(tableArray)];
                     memcpy(fullMessage, &header, sizeof(Header));
                     memcpy(fullMessage + sizeof(Header), tableArray, sizeof(tableArray));
                     push_send(SINGLE, (getRouting(users.oneHopaway[index].chatName)), fullMessage,

@@ -30,6 +30,6 @@ void setName(char* dest, const char* src);
 void protocol_create_header(Header* header, const char* sendername, const char* targetname,
                             uint8_t type);
 
-size_t msglen(const char* msg);
+size_t msglen(const uint8_t* msg);
 
 #endif  // PROTOCOL_HEADER_H

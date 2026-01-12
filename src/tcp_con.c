@@ -62,10 +62,10 @@ int SERVER_listen_on(const char* ip_str, int port) {
     return sock;
 }
 
-int send_tcp(int socket_fd, char* str, size_t size) {
+int send_tcp(int socket_fd, uint8_t* str, size_t size) {
     size_t total_sent = 0;
     size += 1;
-    char* buf = malloc(size);
+    uint8_t* buf = malloc(size);
     memcpy(buf, str, size - 1);
     if (buf[size - 1] != EOT) {
         buf[size - 1] = EOT;  // EOT anhängen

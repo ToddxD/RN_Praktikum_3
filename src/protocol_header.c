@@ -27,7 +27,7 @@ void protocol_create_header(Header* header, const char* sendername, const char* 
     header->type = type;
 }
 
-size_t msglen(const char* msg) {
+size_t msglen(const uint8_t* msg) {
     size_t len = 0;
     while (msg[len] != '\004' && len < MSG_SIZE - 1) {
         len++;
