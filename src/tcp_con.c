@@ -102,7 +102,8 @@ int read_tcp(int socket_fd, char** read_buf) {
             return -1;
         }
 
-        if (c == 0 || c < BUF_SIZE) {
+        char* eot_ptr = memchr(*read_buf + sizeof(Header), EOT, read_count);
+        if (/*c == 0 || c < BUF_SIZE*/eot_ptr) {
             break;
         }
     }
