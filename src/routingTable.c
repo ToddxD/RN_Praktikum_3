@@ -274,6 +274,7 @@ int deleteFromTable(const char* chatName) {
             reachbleTable[i].reachable = 0;
             free(routingTable[i]);
             routingTable[i] = NULL;
+            push_ui("User nicht mehr erreichbar", chatName);
             // memset(&routingTable[i], 0, sizeof(routingTableEntry));
             freeEntries++;
             pthread_mutex_unlock(&tableLock);
@@ -282,6 +283,7 @@ int deleteFromTable(const char* chatName) {
             reachbleTable[i].reachable = 0;
             free(routingTable[i]);
             routingTable[i] = NULL;
+            push_ui("User nicht mehr erreichbar", chatName);
             // memset(&routingTable[i], 0, sizeof(routingTableEntry));
             freeEntries++;
             pthread_mutex_unlock(&tableLock);

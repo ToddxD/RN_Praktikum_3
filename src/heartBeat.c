@@ -11,6 +11,8 @@
 #include "routingTable.h"
 #include "sender.h"
 
+#define HEART_RATE 2000
+
 typedef struct {
     user oneHopaway[50];
     pthread_mutex_t lock;
@@ -49,7 +51,7 @@ void* heartBeatFunction(void* arg) {
         memset(users.oneHopaway, 0, sizeof(users.oneHopaway));
         getHopsOneAway(users.oneHopaway);
         sendHeartbeatSignal();
-        usleep(20000 * 1000);
+        usleep(HEART_RATE * 1000);
         pthread_mutex_lock(&users.lock);
         for (int i = 0; i < sizeof(users.oneHopaway) / sizeof(user); i++) {
             if (users.oneHopaway[i].chatName[0] == '\0') {
@@ -87,7 +89,7 @@ void* heartBeatFunction(void* arg) {
             }
         }
         pthread_mutex_unlock(&users.lock);
-        usleep(600 * 1000);
+        //usleep(600 * 1000);
     }
     return NULL;
 }

@@ -88,12 +88,12 @@ int read_tcp(int socket_fd, char** read_buf) {
     *read_buf = calloc(BUF_SIZE, sizeof(char));
     int read_count = 0;
 
-    for (int i = 0; i < MAX_READ; i++) {
-        if (i > 0) {
+    for (int i = 0; i < (BUF_SIZE * MAX_READ); i++) {
+        if (i > BUF_SIZE) {
             *read_buf = realloc(*read_buf, BUF_SIZE * (i + 1) * sizeof(char));
         }
 
-        int c = read(socket_fd, *read_buf + (i * BUF_SIZE), BUF_SIZE);
+        int c = read(socket_fd, *read_buf + i, 1);
         read_count += c;
         if (c < 0) {
             fprintf(stderr, "[TCP] error reading from socket: %s\n", strerror(errno));
@@ -102,7 +102,9 @@ int read_tcp(int socket_fd, char** read_buf) {
             return -1;
         }
 
-        if (c == 0 || c < BUF_SIZE) {
+        int eot = memchr(*read_buf + sizeof(Header), EOT, read_count - sizeof(Header));
+
+        if (i >= sizeof(Header) && eot != NULL) {
             break;
         }
     }

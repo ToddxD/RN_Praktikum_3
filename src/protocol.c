@@ -80,6 +80,30 @@ void do_login(const char* chat_name, const char* local_host, const int local_por
               msglen(message));
 }
 
+void do_login2(const char* chat_name, uint64_t local_addr_port, uint64_t target_addr_port) {
+    Header newHeader;
+    int offset = 0;
+    protocol_create_header(&newHeader, ownName, "", TYPE_LOGIN);
+    uint8_t message[MSG_SIZE] = {0};
+    memset(message, 0, sizeof(message));
+    memcpy(message + offset, &newHeader, sizeof(Header));
+    offset += sizeof(Header);
+    getName((char*) message + offset, chat_name);
+    offset += NAME_LEN;
+
+    message[offset+3] = (uint8_t)((local_addr_port >> 56));
+    message[offset+2] = (uint8_t)((local_addr_port >> 48) & 0xFF);
+    message[offset+1] = (uint8_t)((local_addr_port >> 40) & 0xFF);
+    message[offset] = (uint8_t)((local_addr_port >> 32) & 0xFF);
+    offset += 4;
+    message[offset] = (uint8_t)((local_addr_port >> 8) & 0xFF);
+    message[offset + 1] = (uint8_t)(local_addr_port & 0xFF);
+    offset += 2;
+    message[offset] = EOT;
+
+    push_send(SINGLE, target_addr_port, message, msglen(message));
+}
+
 void do_logout() {
     Header newHeader;
     protocol_create_header(&newHeader, ownName, "\0", TYPE_LOGOUT);
@@ -163,6 +187,10 @@ void forward(const char* sender, const char* target, const char* msg) {
 }
 
 void msg_login(const char* sender, const char* content) {
+    if (checkNameInTable(sender)) {
+        return;
+    }
+
     // printf("Handling login message\n");
     uint8_t contentNew[OFFSETMESSAGECOUNT];
     memset(contentNew, 0, sizeof(contentNew));
@@ -182,6 +210,10 @@ void msg_login(const char* sender, const char* content) {
     uint8_t ergebnis[getRoutingTableSize()];
     memset(ergebnis, 0, sizeof(ergebnis));
     tableToCharArray(ergebnis);
+
+    // entgegen Protokoll mit login antworten
+    uint64_t directRoute = getRouting(ownName);
+    do_login2(ownName, directRoute, getRouting(sender));
 
     Header header;
 
