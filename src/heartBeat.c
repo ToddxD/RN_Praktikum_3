@@ -49,7 +49,7 @@ void* heartBeatFunction(void* arg) {
         memset(users.oneHopaway, 0, sizeof(users.oneHopaway));
         getHopsOneAway(users.oneHopaway);
         sendHeartbeatSignal();
-        usleep(20000 * 1000);
+        usleep(2000 * 1000);
         pthread_mutex_lock(&users.lock);
         for (int i = 0; i < sizeof(users.oneHopaway) / sizeof(user); i++) {
             if (users.oneHopaway[i].chatName[0] == '\0') {

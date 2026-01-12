@@ -276,7 +276,7 @@ int deleteFromTable(const char* chatName) {
             routingTable[i] = NULL;
             // memset(&routingTable[i], 0, sizeof(routingTableEntry));
             freeEntries++;
-            pthread_mutex_unlock(&tableLock);
+            //pthread_mutex_unlock(&tableLock);
             continue;
         } else if (strcmp(routingTable[i]->nextChatName, chatName) == 0) {
             reachbleTable[i].reachable = 0;
@@ -284,7 +284,7 @@ int deleteFromTable(const char* chatName) {
             routingTable[i] = NULL;
             // memset(&routingTable[i], 0, sizeof(routingTableEntry));
             freeEntries++;
-            pthread_mutex_unlock(&tableLock);
+            //pthread_mutex_unlock(&tableLock);
             continue;
         }
     }
