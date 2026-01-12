@@ -67,13 +67,15 @@ int checkNameNotInMessage(uint8_t* message, char* chatName) {
 }
 
 void tableUpdate(uint8_t* message, int length, char* sender) {
+    char charName[32] = {0};
+    char charName2[32] = {0};
     pthread_mutex_lock(&tableLock);
     uint8_t workingArray[OFFSETMESSAGECOUNT];
     memset(workingArray, 0, OFFSETMESSAGECOUNT);
     for (int i = 0; i < length / OFFSETMESSAGECOUNT; i++) {
         memcpy(workingArray, message + i * OFFSETMESSAGECOUNT, OFFSETMESSAGECOUNT);
-        char charName[32];
-        char charName2[32];
+        memset(charName, 0, 32);
+        memset(charName2, 0, 32);
         getName(charName, (char*) workingArray + OFFSETCHATNAME);
         getName(charName2, (char*) workingArray + OFFSETNEXTCHATNAME);
         int index = checkNameInTable(charName);
@@ -308,7 +310,7 @@ int getRoutingTableSize() {
 
 void putNameAtBack(uint8_t dest[32], const char name[32], int len) {
     for (int i = 0; i < len; i++) {
-        dest[i+31-len] = name[i];
+        dest[i+32-len] = name[i]; //TODO
         //dest[i] = 0;
     }
 }

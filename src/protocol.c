@@ -191,7 +191,7 @@ void msg_login(const char* sender, const char* content) {
     memcpy(message + sizeof(Header), ergebnis, sizeof(ergebnis));
 
     send_to_all_neighboors(message, "\0", sizeof(message));
-
+    usleep(10* 1000);  // 0.1s warten, damit Route Nachricht vorher ankommt
     protocol_create_header(&header, ownName, sender, TYPE_HEART);
     push_send(SINGLE, getRouting(sender), (char*)&header, sizeof(Header));
 }
